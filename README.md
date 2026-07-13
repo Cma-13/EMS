@@ -151,6 +151,6 @@ It automates HR operations including face recognition attendance, ML-based leave
 ---
 
 ### Developer:
-    Name    → Seema Singdan
+    Name    → Seema Singdan, Manalika Shrestha, Shreya Dhital
     College → ASMT College, Kathmandu, Nepal
     Program → BSc. CSIT — Final Year Project (8th Semester)
