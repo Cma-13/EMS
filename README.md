@@ -1,4 +1,4 @@
-# EMS — Employee Management System
+# EMS - Employee Management System
 ## MERN Stack | Face Attendance | AI Leave Prediction | Microservices
 
 ---
