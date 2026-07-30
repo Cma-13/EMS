@@ -63,7 +63,7 @@ def require_service_key(f):
     """
     @wraps(f)
     def decorated(*args, **kwargs):
-        key = request.headers.get("X-Service-Key") or request.json.get("serviceKey", "") if request.is_json else ""
+        key = request.headers.get("X-Service-Key") or (request.json.get("serviceKey", "") if request.is_json else "")
         if key != SERVICE_KEY:
             return jsonify({
                 "success": False,
