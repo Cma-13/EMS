@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { fetchDepartments } from '../../utils/EmployeeHelper';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { FaArrowLeft } from 'react-icons/fa';
 import { API_BASE, apiUrl, fileUrl } from '../../utils/apiConfig'
 
 const Add = () => {
@@ -47,6 +48,10 @@ const Add = () => {
     return (
         <div className="p-6 bg-stone-50 min-h-full">
             <div className="max-w-4xl mx-auto">
+                <button onClick={() => navigate(-1)}
+                    className="flex items-center gap-2 text-stone-500 hover:text-teal-700 text-sm mb-4 font-semibold transition">
+                    <FaArrowLeft /> Back
+                </button>
                 <div className="mb-6">
                     <h2 className="text-2xl font-bold text-stone-800">Add New Employee</h2>
                    
@@ -91,7 +96,9 @@ const Add = () => {
                             </div>
                             <div>
                                 <label className={labelCls}>Salary (Rs.)</label>
-                                <input type="number" name='salary' onChange={handleChange} placeholder='50000' min="1" className={inputCls} required />
+                                <input type="number" name='salary' onChange={handleChange}
+                                    onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault() }}
+                                    placeholder='50000' min="1" className={inputCls} required />
                                
                             </div>
                             <div>

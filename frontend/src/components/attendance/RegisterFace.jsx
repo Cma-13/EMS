@@ -20,7 +20,16 @@ const RegisterFace = () => {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       })
       .then((r) => {
-        if (r.data.success) setEmployees(r.data.employees);
+        if (r.data.success) {
+          const sorted = r.data.employees
+            .sort((a, b) =>
+              a.employeeId.localeCompare(b.employeeId, undefined, {
+                numeric: true,
+              }),
+            )
+            .reverse();
+          setEmployees(sorted);
+        }
       })
       .catch(console.error);
     return () => {

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { fetchDepartments } from '../../utils/EmployeeHelper';
 import axios from 'axios';
 import { useNavigate, useParams } from 'react-router-dom';
+import { FaArrowLeft } from 'react-icons/fa';
 import { API_BASE, apiUrl, fileUrl } from '../../utils/apiConfig'
 
 
@@ -66,6 +67,11 @@ setEmployee((prevData) => ({...prevData, [name]: value}))
         const handleSubmit = async (e)=>{
             e.preventDefault();
 
+            if (Number(employee.salary) <= 0) {
+                alert('Salary must be a positive number.')
+                return
+            }
+
             try {
                const response = await axios.put(`${API_BASE}/api/employee/${id}`,employee,
                 {
@@ -88,6 +94,10 @@ setEmployee((prevData) => ({...prevData, [name]: value}))
   return (
     <>{departments && employee ? (
     <div className='max-w-4xl mx-auto mt-10 bg-white p-8 rounded-md shadow-md'>
+        <button onClick={() => navigate(-1)}
+            className='flex items-center gap-2 text-gray-500 hover:text-teal-700 text-sm mb-4 font-semibold transition'>
+            <FaArrowLeft /> Back
+        </button>
         <h2 className='text-2xl font-bold mb-6'>Edit Employee</h2>
         <form onSubmit={handleSubmit}>
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
@@ -138,8 +148,10 @@ setEmployee((prevData) => ({...prevData, [name]: value}))
                     </label>
                     <input type="number" name='salary'
                     onChange={handleChange}
+                    onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault() }}
                     value={employee.salary}
                     placeholder='Salary'
+                    min="1"
                     className='mt-1 p-2 block w-full border border-gray-300 rounded-md' required />  
                 </div>
 

@@ -7,7 +7,7 @@ import {
     FaCheckCircle, FaTimesCircle, FaExclamationTriangle,
     FaUserTie, FaCalendarAlt, FaChartBar, FaClock,
     FaInfoCircle, FaDatabase, FaUser, FaShieldAlt,
-    FaArrowUp, FaArrowDown, FaMinus
+    FaArrowUp, FaArrowDown, FaMinus, FaArrowLeft
 } from 'react-icons/fa'
 
 const Detail = () => {
@@ -129,6 +129,10 @@ const Detail = () => {
     return (
         <div className="p-6 bg-stone-50 min-h-full">
             <div className="max-w-5xl mx-auto">
+                <button onClick={() => navigate(-1)}
+                    className="flex items-center gap-2 text-stone-500 hover:text-teal-700 text-sm mb-4 font-semibold transition">
+                    <FaArrowLeft /> Back
+                </button>
                 <div className="mb-6 flex items-center justify-between">
                     <div>
                         <h2 className="text-2xl font-bold text-stone-800">Leave Request</h2>
@@ -383,176 +387,6 @@ const Detail = () => {
                                                 prediction.verdict_class === 'approve' ? 'text-emerald-800' :
                                                 prediction.verdict_class === 'neutral' ? 'text-amber-800' : 'text-red-700'
                                             }`}>{prediction.verdict}</p>
-                                        </div>
-
-                                        {/* 3 Components breakdown */}
-                                        <div>
-                                            <p className="text-xs font-semibold text-stone-400 uppercase tracking-wide mb-2">
-                                                How the score is calculated
-                                            </p>
-                                            <div className="space-y-2">
-
-                                                {/* RF */}
-                                                <div className="border border-stone-200 rounded-xl p-3 bg-stone-50">
-                                                    <div className="flex items-center justify-between mb-1.5">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                                <FaDatabase className="text-blue-500 text-xs" />
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-xs font-semibold text-stone-700">Random Forest</p>
-                                                                <p className="text-xs text-stone-400">1500 HR records - weight 30%</p>
-                                                            </div>
-                                                        </div>
-                                                        <span className="text-sm font-bold text-blue-600">{comp.random_forest.probability}%</span>
-                                                    </div>
-                                                    <div className="bg-stone-200 rounded-full h-1 mb-2">
-                                                        <div className="h-1 rounded-full bg-blue-400" style={{ width: comp.random_forest.probability + '%' }} />
-                                                    </div>
-                                                    {comp.random_forest.top_factors && (
-                                                        <div className="text-xs text-stone-400 space-y-0.5">
-                                                            <p className="font-medium text-stone-500">Top factors the RF considers:</p>
-                                                            {comp.random_forest.top_factors.map((f, i) => (
-                                                                <p key={i} className="flex justify-between">
-                                                                    <span>{f.factor}</span>
-                                                                    <span className="font-semibold">{f.importance}</span>
-                                                                </p>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                {/* Bayesian */}
-                                                <div className="border border-stone-200 rounded-xl p-3 bg-stone-50">
-                                                    <div className="flex items-center justify-between mb-1.5">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-6 h-6 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                                <FaUser className="text-teal-600 text-xs" />
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-xs font-semibold text-stone-700">Employee History (Bayesian)</p>
-                                                                <p className="text-xs text-stone-400">{comp.bayesian.history_total} decisions - weight 50%</p>
-                                                            </div>
-                                                        </div>
-                                                        <span className="text-sm font-bold text-teal-600">{comp.bayesian.probability}%</span>
-                                                    </div>
-                                                    <div className="bg-stone-200 rounded-full h-1 mb-2">
-                                                        <div className="h-1 rounded-full bg-teal-500" style={{ width: comp.bayesian.probability + '%' }} />
-                                                    </div>
-                                                    <div className="text-xs text-stone-400 space-y-0.5">
-                                                        <p className="flex justify-between">
-                                                            <span>Overall approval rate</span>
-                                                            <span className="font-semibold">{comp.bayesian.overall_rate}%</span>
-                                                        </p>
-                                                        <p className="flex justify-between">
-                                                            <span>{leave.leaveType} approval rate</span>
-                                                            <span className="font-semibold">{comp.bayesian.type_rate}%</span>
-                                                        </p>
-                                                        <p className="flex justify-between">
-                                                            <span>History: approved / rejected</span>
-                                                            <span className="font-semibold">{comp.bayesian.history_approved} / {comp.bayesian.history_rejected}</span>
-                                                        </p>
-                                                        <p className="text-stone-400 italic mt-1">{comp.bayesian.explanation}</p>
-                                                    </div>
-                                                </div>
-
-                                                {/* Rules */}
-                                                <div className="border border-stone-200 rounded-xl p-3 bg-stone-50">
-                                                    <div className="flex items-center justify-between mb-1.5">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-6 h-6 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                                <FaShieldAlt className="text-amber-600 text-xs" />
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-xs font-semibold text-stone-700">Duration Rules</p>
-                                                                <p className="text-xs text-stone-400">Leave type limits - weight 20%</p>
-                                                            </div>
-                                                        </div>
-                                                        <span className={`text-sm font-bold ${comp.rules.hard_blocked ? 'text-red-500' : 'text-amber-600'}`}>
-                                                            {comp.rules.probability}%
-                                                        </span>
-                                                    </div>
-                                                    <div className="bg-stone-200 rounded-full h-1 mb-2">
-                                                        <div className={`h-1 rounded-full ${comp.rules.hard_blocked ? 'bg-red-400' : 'bg-amber-400'}`}
-                                                            style={{ width: comp.rules.probability + '%' }} />
-                                                    </div>
-                                                    <p className="text-xs text-stone-400">{comp.rules.reason}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Relationship between RF and employee history */}
-                                        {prediction.relationship && (
-                                            <div className={`rounded-xl p-3 border text-xs ${
-                                                prediction.relationship.alignment === 'above'   ? 'bg-emerald-50 border-emerald-200' :
-                                                prediction.relationship.alignment === 'below'   ? 'bg-amber-50 border-amber-200' :
-                                                prediction.relationship.alignment === 'aligned' ? 'bg-blue-50 border-blue-200' :
-                                                'bg-stone-50 border-stone-200'
-                                            }`}>
-                                                <p className="font-semibold text-stone-700 mb-1">
-                                                    History vs General Patterns
-                                                </p>
-                                                <p className={`font-medium mb-1 ${
-                                                    prediction.relationship.alignment === 'above' ? 'text-emerald-700' :
-                                                    prediction.relationship.alignment === 'below' ? 'text-amber-700' : 'text-blue-700'
-                                                }`}>{prediction.relationship.message}</p>
-                                                <p className="text-stone-500 leading-relaxed">{prediction.relationship.detail}</p>
-                                            </div>
-                                        )}
-
-                                        {/* Patterns */}
-                                        {prediction.patterns && prediction.patterns.length > 0 && (
-                                            <div className="space-y-1.5">
-                                                <p className="text-xs font-semibold text-stone-400 uppercase tracking-wide">Observations</p>
-                                                {prediction.patterns.map((p, i) => (
-                                                    <div key={i} className={`flex items-start gap-2 p-2 rounded-lg text-xs ${
-                                                        p.type === 'warning' ? 'bg-red-50 text-red-700 border border-red-100' :
-                                                        p.type === 'good'    ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
-                                                        'bg-stone-50 text-stone-600 border border-stone-200'
-                                                    }`}>
-                                                        {p.type === 'warning' ? <FaExclamationTriangle className="flex-shrink-0 mt-0.5" />
-                                                            : p.type === 'good' ? <FaCheckCircle className="flex-shrink-0 mt-0.5" />
-                                                            : <FaInfoCircle className="flex-shrink-0 mt-0.5" />}
-                                                        <span>{p.msg}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        {/* Why this score — plain language reasons */}
-                                        <div className="bg-stone-50 border border-stone-200 rounded-xl p-3.5">
-                                            <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">Why this score</p>
-                                            <ul className="space-y-1.5 text-xs text-stone-600">
-                                                {/* RF contribution */}
-                                                <li className="flex items-start gap-2">
-                                                    <span className="text-blue-400 mt-0.5 flex-shrink-0">-</span>
-                                                    <span>
-                                                        General HR data suggests <b>{comp.random_forest.probability}%</b> approval rate for this leave type and duration (based on 1500 records, weight 30%)
-                                                    </span>
-                                                </li>
-                                                {/* Bayesian contribution */}
-                                                <li className="flex items-start gap-2">
-                                                    <span className="text-teal-500 mt-0.5 flex-shrink-0">-</span>
-                                                    <span>
-                                                        {comp.bayesian.history_total === 0
-                                                            ? 'No personal history - using industry average of 65% as starting point (weight 50%)'
-                                                            : <>This employee's personal history shows <b>{comp.bayesian.overall_rate}%</b> overall approval rate across {comp.bayesian.history_total} decisions, and <b>{comp.bayesian.type_rate}%</b> for {leave.leaveType} specifically (weight 50%)</>
-                                                        }
-                                                    </span>
-                                                </li>
-                                                {/* Rules contribution */}
-                                                <li className="flex items-start gap-2">
-                                                    <span className={`mt-0.5 flex-shrink-0 ${comp.rules.hard_blocked ? 'text-red-400' : 'text-amber-400'}`}>-</span>
-                                                    <span>{comp.rules.reason} (weight 20%)</span>
-                                                </li>
-                                                {/* Final */}
-                                                <li className="flex items-start gap-2 pt-1 border-t border-stone-200 mt-1">
-                                                    <span className="text-stone-400 mt-0.5 flex-shrink-0">-</span>
-                                                    <span>
-                                                        Final: <b>{comp.random_forest.probability}% × 30%</b> + <b>{comp.bayesian.probability}% × 50%</b> + <b>{comp.rules.probability}% × 20%</b> = <b className="text-stone-700">{prediction.score}/100</b>
-                                                    </span>
-                                                </li>
-                                            </ul>
                                         </div>
 
                                         <p className="text-xs text-stone-400 text-center">
