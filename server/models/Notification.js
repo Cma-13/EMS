@@ -16,6 +16,9 @@ const notificationSchema = new Schema({
     isRead:     { type: Boolean, default: false },
     forRole:    { type: String, enum: ['admin', 'employee', 'all'], default: 'admin' },
     forUserId:  { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    // For broadcasts (forRole 'all', e.g. holidays): who has read it.
+    // A single isRead flag was shared, so one employee reading it marked it read for everyone.
+    readBy:     [{ type: Schema.Types.ObjectId, ref: 'User' }],
     // For early exit requests — stores attendance ID so admin can approve/reject
     attendanceId: { type: Schema.Types.ObjectId, ref: 'Attendance', default: null },
     actionable:   { type: Boolean, default: false },   // true = admin can act on this
