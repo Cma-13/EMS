@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import axios from 'axios'
-import { ML_SERVICE_URL } from '../../utils/serviceConfig'
+import { ML_SERVICE_URL, mlHeaders } from '../../utils/serviceConfig'
 import { API_BASE } from '../../utils/apiConfig'
 import {
     FaCheckCircle, FaTimesCircle, FaExclamationTriangle,
@@ -85,7 +85,7 @@ const Detail = () => {
                 previousLeavesTaken: consistency?.total || 0,
             }
 
-            const res = await axios.post(`${ML_SERVICE_URL}/predict-leave`, payload)
+            const res = await axios.post(`${ML_SERVICE_URL}/predict-leave`, payload, { headers: mlHeaders() })
             setPrediction(res.data)
         } catch {
             setPrediction({ error: 'Could not connect to prediction service on port 5002.' })
