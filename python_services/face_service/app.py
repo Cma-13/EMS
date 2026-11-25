@@ -16,6 +16,7 @@ Run:
 """
 
 import os
+import secrets
 import requests as http_requests
 from functools import wraps
 from flask import Flask, request, jsonify
@@ -344,6 +345,15 @@ def checkout():
         employee = db.employees.find_one({"employeeId": direct_emp_id})
         if not employee:
             return jsonify({"success": False, "message": "Employee not found."})
+        # Only allowed right after a face scan asked for an early-exit reason.
+        # The scan issues a one-time token; without it anyone could check out
+        # any employee just by sending their employee ID.
+        pending = db.attendances.find_one({"employeeId": employee["_id"], "date": today})
+        token   = data.get("exitToken", "")
+        if not pending or not token or pending.get("earlyExitToken") != token:
+            return jsonify({"success": False, "message": "Please scan your face again to check out."}), 403
+        if not early_exit_reason.strip():
+            return jsonify({"success": False, "message": "Please enter a reason for early exit."}), 400
         user     = db.users.find_one({"_id": employee.get("userId")}) or {}
         emp_id   = direct_emp_id
         emp_name = user.get("name", emp_id)
@@ -409,9 +419,12 @@ def checkout():
 
     # Enforce 8-hour minimum
     if worked < REQUIRED_HOURS and not early_exit_reason:
+        exit_token = secrets.token_urlsafe(16)
+        db.attendances.update_one({"_id": existing["_id"]}, {"$set": {"earlyExitToken": exit_token}})
         return jsonify({
             "success":               True,
             "needsEarlyExitReason":  True,
+            "exitToken":             exit_token,
             "employeeId":            emp_id,
             "employeeName":          emp_name,
             "workedMinutes":         worked,
@@ -437,13 +450,15 @@ def checkout():
                 "earlyExitStatus":  "pending",
                 "pendingCheckOut":  now,
                 "pendingWorkedMins": worked,
-            }}
+            },
+             "$unset": {"earlyExitToken": ""}}
         )
         # Notify admin via Node server
         try:
             node_url = os.environ.get("NODE_SERVER_URL", "http://localhost:5000")
             http_requests.post(
                 f"{node_url}/api/attendance/notify-early-exit",
+                headers={"X-Service-Key": SERVICE_KEY},
                 json={
                     "attendanceId":  str(existing["_id"]),
                     "employeeId":    emp_id,
