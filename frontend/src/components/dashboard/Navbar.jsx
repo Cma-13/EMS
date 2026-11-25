@@ -66,7 +66,12 @@ const Navbar = () => {
     }
 
     const handleLogout = () => { logout(); navigate('/login') }
-    const handleNotifClick = (n) => { if (n.link) navigate(n.link); setOpen(false) }
+    const handleNotifClick = (n) => {
+        // Older salary notifications were saved without the user id, which sent people to the login page
+        const link = n.link === '/employee-dashboard/salary' ? `/employee-dashboard/salary/${user?._id}` : n.link
+        if (link) navigate(link)
+        setOpen(false)
+    }
 
     const photoUrl   = user?.profileImage ? `${API_BASE}/${user.profileImage}` : null
     const avatarUrl  = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'U')}&background=0f766e&color=fff&size=36&rounded=true&bold=true`
