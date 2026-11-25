@@ -32,6 +32,17 @@ const POLICY = {
 
 // ── Helpers ──────────────────────────────────────────────
 
+// Admin can access anyone; an employee only their own records
+const canAccess = (req, userId) => req.user.role === 'admin' || String(userId) === String(req.user._id)
+
+// Read a 'YYYY-MM-DD' string as a LOCAL date (new Date('2026-11-25') is UTC midnight,
+// which is 05:45 in Nepal and made notice periods one day too lenient)
+const toLocalDay = (d) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d))
+    if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+    const x = new Date(d); x.setHours(0, 0, 0, 0); return x
+}
+
 const getDuration = (start, end) => {
     const s = new Date(start), e = new Date(end)
     return Math.ceil((e - s) / 86400000) + 1
@@ -50,6 +61,8 @@ const validateLeaveRequest = async (employee, leaveType, startDate, endDate, exc
     const errors = []
     const warnings = []
     const policy  = POLICY[leaveType]
+    if (!policy) return { errors: ['Please choose a valid leave type.'], warnings }
+    if (!startDate || !endDate) return { errors: ['Please choose start and end dates.'], warnings }
     const start   = new Date(startDate)
     const end     = new Date(endDate)
     const today   = new Date(); today.setHours(0,0,0,0)
@@ -88,7 +101,7 @@ const validateLeaveRequest = async (employee, leaveType, startDate, endDate, exc
 
     // 3. Notice period
     if (policy.minNoticeDays > 0) {
-        const noticeDays = Math.ceil((start - today) / 86400000)
+        const noticeDays = Math.round((toLocalDay(startDate) - today) / 86400000)
         if (noticeDays < policy.minNoticeDays) {
             errors.push(`${leaveType} requires at least ${policy.minNoticeDays} day(s) advance notice. Please apply by ${new Date(start - policy.minNoticeDays * 86400000).toLocaleDateString()}.`)
         }
@@ -207,7 +220,8 @@ const calculatePaidUnpaid = async (employeeId, leaveType, duration, year, startD
 
 const addLeave = async (req, res) => {
     try {
-        const { userId, leaveType, startDate, endDate, reason } = req.body
+        const { leaveType, startDate, endDate, reason } = req.body
+        const userId   = req.user._id   // always the logged-in user — never trust an ID from the request
         const employee = await Employee.findOne({ userId }).populate('userId')
         if (!employee) return res.status(404).json({ success: false, error: 'Employee not found' })
 
@@ -277,7 +291,8 @@ const getLeave = async (req, res) => {
         if (role === 'admin') {
             leaves = await Leave.find({ employeeId: id })
         } else {
-            const employee = await Employee.findOne({ userId: id })
+            const employee = await Employee.findOne({ userId: req.user._id })
+            if (!employee) return res.status(404).json({ success: false, error: 'Employee not found' })
             leaves = await Leave.find({ employeeId: employee._id })
         }
         return res.status(200).json({ success: true, leaves })
@@ -311,6 +326,9 @@ const getLeaveDetail = async (req, res) => {
                 { path: 'userId', select: 'name profileImage' }
             ]
         })
+        if (!leave) return res.status(404).json({ success: false, error: 'Leave not found' })
+        if (!canAccess(req, leave.employeeId?.userId?._id))
+            return res.status(403).json({ success: false, error: 'You can only view your own leaves.' })
         return res.status(200).json({ success: true, leave })
     } catch (error) {
         return res.status(500).json({ success: false, error: 'Failed to get leave detail' })
@@ -321,6 +339,8 @@ const updateLeave = async (req, res) => {
     try {
         const { id } = req.params
         const { status } = req.body
+        if (!['Approved', 'Rejected', 'Pending'].includes(status))
+            return res.status(400).json({ success: false, error: 'Status must be Approved, Rejected or Pending.' })
 
         const leave = await Leave.findById(id).populate({
             path: 'employeeId',
@@ -343,6 +363,21 @@ const updateLeave = async (req, res) => {
 
             const balanceField = policy.balanceKey
             const deductPaid   = Math.min(leave.paidDays, balance[balanceField].remaining)
+
+            // Balance may have been used up by other leaves approved after this one was
+            // submitted. Move the days the balance can no longer cover to unpaid, so the
+            // leave record, the balance and the salary deduction stay consistent.
+            if (deductPaid < leave.paidDays) {
+                const shortfall = leave.paidDays - deductPaid
+                const emp       = await Employee.findById(leave.employeeId._id)
+                const lastPay   = await Salary.findOne({ employeeId: leave.employeeId._id }).sort({ payDate: -1 })
+                const monthly   = lastPay?.basicSalary || emp?.salary || 0
+                leave.paidDays        = deductPaid
+                leave.unpaidDays      = (leave.unpaidDays || 0) + shortfall
+                leave.isPaid          = false
+                leave.salaryDeduction = Math.round((monthly / 26) * leave.unpaidDays)
+                await leave.save()
+            }
 
             balance[balanceField].used      += deductPaid
             balance[balanceField].remaining  = Math.max(0, balance[balanceField].remaining - deductPaid)
@@ -391,6 +426,11 @@ const updateLeave = async (req, res) => {
 const getLeavesByEmployee = async (req, res) => {
     try {
         const { empId } = req.params
+        if (req.user.role !== 'admin') {
+            const emp = await Employee.findById(empId)
+            if (!emp || !canAccess(req, emp.userId))
+                return res.status(403).json({ success: false, error: 'You can only view your own leaves.' })
+        }
         const leaves = await Leave.find({ employeeId: empId }).sort({ appliedAt: -1 })
         return res.status(200).json({ success: true, leaves })
     } catch (error) {
@@ -402,6 +442,8 @@ const getLeavesByEmployee = async (req, res) => {
 const getLeaveBalance = async (req, res) => {
     try {
         const { userId } = req.params
+        if (!canAccess(req, userId))
+            return res.status(403).json({ success: false, error: 'You can only view your own balance.' })
         const employee   = await Employee.findOne({ userId })
         if (!employee) return res.status(404).json({ success: false, error: 'Employee not found' })
 
@@ -417,8 +459,8 @@ const getLeaveBalance = async (req, res) => {
 // Validate leave without submitting (for real-time feedback)
 const checkLeaveValidation = async (req, res) => {
     try {
-        const { userId, leaveType, startDate, endDate } = req.body
-        const employee = await Employee.findOne({ userId })
+        const { leaveType, startDate, endDate } = req.body
+        const employee = await Employee.findOne({ userId: req.user._id })
         if (!employee) return res.status(404).json({ success: false, error: 'Employee not found' })
 
         const { errors, warnings } = await validateLeaveRequest(employee, leaveType, startDate, endDate)
@@ -428,7 +470,7 @@ const checkLeaveValidation = async (req, res) => {
         const year     = start.getFullYear()
 
         let paidInfo = null
-        if (duration > 0 && leaveType) {
+        if (duration > 0 && POLICY[leaveType]) {   // skip for unknown leave types (was a 500 crash)
             const { paidDays, unpaidDays, salaryDeduction } = await calculatePaidUnpaid(
                 employee._id, leaveType, duration, year, startDate
             )
