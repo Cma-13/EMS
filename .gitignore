@@ -1,0 +1,23 @@
+# Secrets
+.env
+**/.env
+**/.env.office
+!**/.env.example
+
+# Dependencies
+node_modules/
+**/node_modules/
+venv/
+**/venv/
+__pycache__/
+
+# Uploaded images
+server/public/uploads/*
+!server/public/uploads/.gitkeep
+
+# Seed data (kept locally only)
+server/attendanceLeaveSalarySeed.js
+server/*_seed.json
+
+# Editor
+.vscode/
