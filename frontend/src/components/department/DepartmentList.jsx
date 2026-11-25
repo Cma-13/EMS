@@ -5,6 +5,7 @@ import { columns, DepartmentButtons, customTableStyles } from '../../utils/Depar
 import axios from "axios"
 import { API_BASE } from '../../utils/apiConfig'
 import { FaBuilding } from 'react-icons/fa'
+import { showAlert } from '../AlertPopup'
 
 const DepartmentList = () => {
 
@@ -33,7 +34,7 @@ const DepartmentList = () => {
       }
     } catch (error) {
       if (error.response && !error.response.data.success) {
-        alert(error.response.data.error);
+        showAlert(error.response.data.error);
       }
     } finally {
       setDepLoading(false);
