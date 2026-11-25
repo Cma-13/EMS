@@ -32,7 +32,10 @@ app.use(cors({
         if (allowedOrigins.includes(origin)) return callback(null, true)
         // Allow any local network origin dynamically
         if (/^http:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)/.test(origin)) return callback(null, true)
-        callback(new Error('Not allowed by CORS'))
+        // The server's own address (e.g. opening the API directly in a browser)
+        if (origin === `http://localhost:${process.env.PORT}`) return callback(null, true)
+        const err = new Error('Not allowed by CORS'); err.status = 403
+        callback(err)
     },
     credentials: true,
 }))
@@ -51,5 +54,11 @@ app.use('/api/notifications', notificationRouter)
 app.use('/api/holidays',      holidayRouter)
 
 app.use((req, res) => res.status(404).json({ success: false, error: 'Route not found' }))
+
+// Last-resort error handler: clean JSON instead of an HTML page with file paths and stack traces
+app.use((err, req, res, next) => {
+    if (err.status !== 403) console.error(err)
+    res.status(err.status || 500).json({ success: false, error: err.status === 403 ? err.message : 'Server error' })
+})
 
 app.listen(process.env.PORT, () => console.log(`Server running on port ${process.env.PORT}`))
