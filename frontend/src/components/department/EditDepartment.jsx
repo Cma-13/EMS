@@ -2,6 +2,7 @@ import React, { useState,useEffect} from 'react'
 import axios from 'axios';
 import { useParams,useNavigate  } from 'react-router-dom';
 import { API_BASE, apiUrl, fileUrl } from '../../utils/apiConfig'
+import { showAlert } from '../AlertPopup'
 
 const EditDepartment = () => {
     const {id} = useParams();
@@ -25,7 +26,7 @@ if(response.data.success){
 }  
   }catch (error) {
       if(error.response && !error.response.data.success){
-                    alert(error.response.data.error);
+                    showAlert(error.response.data.error);
                   }
       }
 finally{
@@ -55,7 +56,7 @@ finally{
                      }
                   } catch (error) {
                       if(error.response && !error.response.data.success){
-                          alert(error.response.data.error);
+                          showAlert(error.response.data.error);
                       
                   }
               }
