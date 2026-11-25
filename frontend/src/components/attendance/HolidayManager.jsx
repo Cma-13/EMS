@@ -3,6 +3,7 @@ import axios from 'axios'
 import ConfirmModal from '../ConfirmModal'
 import { FaUmbrellaBeach, FaPlus, FaTrash, FaCalendarAlt } from 'react-icons/fa'
 import { API_BASE, apiUrl, fileUrl } from '../../utils/apiConfig'
+import { showAlert } from '../AlertPopup'
 
 const HolidayManager = () => {
     const [holidays, setHolidays]   = useState([])
@@ -52,7 +53,7 @@ const handleDelete = async () => {
             headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         })
         fetchHolidays()
-    } catch (e) { alert('Failed to delete') }
+    } catch (e) { showAlert('Failed to delete') }
 }
 
     const upcoming = holidays.filter(h => new Date(h.date) >= new Date())
