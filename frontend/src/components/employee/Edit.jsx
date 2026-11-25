@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FaArrowLeft } from 'react-icons/fa';
 import { API_BASE, apiUrl, fileUrl } from '../../utils/apiConfig'
+import { showAlert } from '../AlertPopup'
 
 
 const Edit = () => {
@@ -50,7 +51,7 @@ useEffect(() => {
     }  
       }catch (error) {
           if(error.response && !error.response.data.success){
-                        alert(error.response.data.error);
+                        showAlert(error.response.data.error);
                       }
           }
  
@@ -68,7 +69,7 @@ setEmployee((prevData) => ({...prevData, [name]: value}))
             e.preventDefault();
 
             if (Number(employee.salary) <= 0) {
-                alert('Salary must be a positive number.')
+                showAlert('Salary must be a positive number.')
                 return
             }
 
@@ -84,7 +85,7 @@ setEmployee((prevData) => ({...prevData, [name]: value}))
                }
             } catch (error) {
                 if(error.response && !error.response.data.success){
-                    alert(error.response.data.error);
+                    showAlert(error.response.data.error);
                 
             }
         }
