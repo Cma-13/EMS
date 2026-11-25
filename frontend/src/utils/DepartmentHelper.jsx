@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { API_BASE } from '../utils/apiConfig'
 import { useState } from "react";
 import ConfirmModal from '../components/ConfirmModal';
+import { showAlert } from '../components/AlertPopup'
 
 export const DepartmentButtons = ({ Id, onDepartmentDelete }) => {
     const navigate = useNavigate();
@@ -17,7 +18,7 @@ export const DepartmentButtons = ({ Id, onDepartmentDelete }) => {
             if (response.data.success) onDepartmentDelete();
         } catch (error) {
             if (error.response && !error.response.data.success) {
-                alert(error.response.data.error);
+                showAlert(error.response.data.error);
             }
         }
     };
