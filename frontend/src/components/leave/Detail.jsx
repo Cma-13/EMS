@@ -9,6 +9,8 @@ import {
     FaInfoCircle, FaDatabase, FaUser, FaShieldAlt,
     FaArrowUp, FaArrowDown, FaMinus, FaArrowLeft
 } from 'react-icons/fa'
+import { showAlert } from '../AlertPopup'
+import ConfirmModal from '../ConfirmModal'
 
 const Detail = () => {
     const { id }   = useParams()
@@ -19,6 +21,7 @@ const Detail = () => {
     const [history, setHistory]       = useState([])
     const [consistency, setConsistency] = useState(null)
     const [loading, setLoading]       = useState(true)
+    const [pendingAction, setPendingAction] = useState(null)  // { leaveId, status } waiting for confirm
 
     useEffect(() => {
         const fetchLeave = async () => {
@@ -90,8 +93,13 @@ const Detail = () => {
         setPredicting(false)
     }
 
-    const changeStatus = async (leaveId, status) => {
-        if (!window.confirm(`Are you sure you want to ${status.toLowerCase()} this leave?`)) return
+    // Step 1: button click opens the confirm popup
+    const changeStatus = (leaveId, status) => setPendingAction({ leaveId, status })
+
+    // Step 2: runs only after the admin clicks the confirm button in the popup
+    const confirmStatus = async () => {
+        const { leaveId, status } = pendingAction
+        setPendingAction(null)
         try {
             const r = await axios.put(`${API_BASE}/api/leave/${leaveId}`, { status }, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
@@ -103,7 +111,7 @@ const Detail = () => {
                 const updated = { ...leave, status }
                 await fetchHistory(updated)
             }
-        } catch (err) { alert(err.response?.data?.error || 'Failed to update') }
+        } catch (err) { showAlert(err.response?.data?.error || 'Failed to update') }
     }
 
     const statusBadge = (s) => {
@@ -128,6 +136,18 @@ const Detail = () => {
 
     return (
         <div className="p-6 bg-stone-50 min-h-full">
+            <ConfirmModal
+                isOpen={!!pendingAction}
+                title={pendingAction?.status === 'Approved' ? 'Approve this leave?' : 'Reject this leave?'}
+                message={pendingAction?.status === 'Approved'
+                    ? 'The employee will be notified that their leave is approved.'
+                    : 'The employee will be notified that their leave is rejected.'}
+                confirmText={pendingAction?.status === 'Approved' ? 'Approve' : 'Reject'}
+                confirmColor={pendingAction?.status === 'Approved' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-600 hover:bg-red-700'}
+                tone={pendingAction?.status === 'Approved' ? 'success' : 'danger'}
+                onConfirm={confirmStatus}
+                onCancel={() => setPendingAction(null)}
+            />
             <div className="max-w-5xl mx-auto">
                 <button onClick={() => navigate(-1)}
                     className="flex items-center gap-2 text-stone-500 hover:text-teal-700 text-sm mb-4 font-semibold transition">
