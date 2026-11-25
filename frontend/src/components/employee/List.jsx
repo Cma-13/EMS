@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { FaPlus, FaSearch, FaEye, FaEdit, FaTrash, FaUsers, FaFilter } from 'react-icons/fa'
 import { API_BASE, apiUrl, fileUrl } from '../../utils/apiConfig'
+import { showAlert } from '../AlertPopup'
 
 const List = () => {
     const [employees, setEmployees] = useState([])
@@ -46,7 +47,7 @@ const handleDelete = async () => {
         })
         if (r.data.success) { setConfirmData(null); fetchEmployees() }
     } catch (err) {
-        alert(err.response?.data?.error || 'Failed to delete employee')
+        showAlert(err.response?.data?.error || 'Failed to delete employee')
     }
 }
 
