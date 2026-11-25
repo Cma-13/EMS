@@ -9,7 +9,8 @@ const __dirname  = path.dirname(__filename);
 
 const changePassword = async (req, res) => {
     try {
-        const { userId, oldPassword, newPassword } = req.body;
+        const { oldPassword, newPassword } = req.body;
+        const userId = req.user._id;  // only ever change your own password
         if (!newPassword || newPassword.length < 6)
             return res.status(400).json({ success: false, error: 'New password must be at least 6 characters.' });
 
