@@ -56,7 +56,7 @@ const addSalary = async (req, res) => {
             await createNotification(
                 'salary_paid',
                 `Your salary of Rs. ${totalSalary.toLocaleString()} has been credited for ${payDateStr}${deductionNote}.`,
-                '/employee-dashboard/salary',
+                `/employee-dashboard/salary/${employee.userId._id}`,
                 'employee',
                 employee.userId._id
             );
@@ -76,7 +76,8 @@ const getSalary = async (req, res) => {
         if (role === 'admin') {
             salary = await Salary.find({ employeeId: id }).populate('employeeId', 'employeeId');
         } else {
-            const employee = await Employee.findOne({ userId: id });
+            const employee = await Employee.findOne({ userId: req.user._id });  // employees: own salary only
+            if (!employee) return res.status(404).json({ success: false, error: 'Employee not found' });
             salary = await Salary.find({ employeeId: employee._id }).populate('employeeId', 'employeeId');
         }
         return res.status(200).json({ success: true, salary });
