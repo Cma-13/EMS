@@ -8,6 +8,7 @@ import {
 } from 'react-icons/fa'
 import { FACE_SERVICE_URL, faceHeaders } from '../utils/serviceConfig'
 import { API_BASE } from '../utils/apiConfig'
+import { showAlert } from '../components/AlertPopup'
 
 const getLocalToday = () => {
     const now = new Date()
@@ -129,7 +130,7 @@ const AttendancePage = () => {
     }, [stream, mode])
 
     const submitEarlyExitRequest = async () => {
-        if (!earlyReason.trim()) { alert('Please enter a reason.'); return }
+        if (!earlyReason.trim()) { showAlert('Please enter a reason.'); return }
         setLoading(true)
         try {
             const res = await axios.post(`${FACE_SERVICE_URL}/checkout`, {
