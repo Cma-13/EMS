@@ -9,6 +9,7 @@ import {
     FaVenusMars, FaHeart, FaMoneyBillWave, FaEdit, FaTrash,
     FaArrowLeft, FaIdBadge, FaCalendarCheck, FaFileAlt, FaUserTie
 } from 'react-icons/fa'
+import { showAlert } from '../AlertPopup'
 
 const InfoRow = ({ icon, label, value, valueCls='' }) => (
     <div className="flex items-start gap-3 py-3 border-b border-stone-100 last:border-0">
@@ -85,7 +86,7 @@ const handleDelete = async () => {
             })
             if (r.data.success) navigate('/admin-dashboard/employees')
         } catch (err) {
-            alert(err.response?.data?.error || 'Failed to delete employee')
+            showAlert(err.response?.data?.error || 'Failed to delete employee')
         }
         setDeleting(false)
     }
@@ -232,11 +233,17 @@ const handleDelete = async () => {
                                     <FaUserTie className="text-teal-600" /> Quick Actions
                                 </h3>
                                 <div className="space-y-2">
+                                    {/* Only admins can edit employee info */}
+                                    {user?.role === 'admin' && (
                                     <button onClick={() => navigate(`/admin-dashboard/employees/edit/${id}`)}
                                         className="w-full flex items-center gap-3 px-4 py-3 bg-teal-50 hover:bg-teal-100 text-teal-700 rounded-xl text-sm font-semibold transition border border-teal-100">
                                         <FaEdit /> Edit Employee Info
                                     </button>
-                                    <button onClick={() => navigate(`/admin-dashboard/employees/salary/${id}`)}
+                                    )}
+                                    {/* Admin goes to the admin salary page, employee to their own salary page */}
+                                    <button onClick={() => navigate(user?.role === 'admin'
+                                            ? `/admin-dashboard/employees/salary/${id}`
+                                            : `/employee-dashboard/salary/${user?._id}`)}
                                         className="w-full flex items-center gap-3 px-4 py-3 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl text-sm font-semibold transition border border-amber-100">
                                         <FaMoneyBillWave /> View Salary Records
                                     </button>
