@@ -3,6 +3,8 @@ import Employee from '../models/Employee.js'
 import User from '../models/User.js'
 import Notification from '../models/Notification.js'
 import { createNotification } from './notificationController.js'
+import Leave from '../models/Leave.js'
+import { isHoliday } from './holidayController.js'
 
 const markAttendance = async (req, res) => {
     try {
@@ -115,11 +117,24 @@ const runDailyAbsentCheck = async (req, res) => {
     try {
         const today     = new Date()
         const dateStr   = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
+        // Don't mark anyone absent on a holiday or weekend
+        // (WEEKEND_DAYS in server/.env, 0=Sun … 6=Sat; default Saturday)
+        const holidayName = await isHoliday(dateStr)
+        const weekendDays = (process.env.WEEKEND_DAYS || '6').split(',').map(Number)
+        if (holidayName || weekendDays.includes(today.getDay())) {
+            return res.status(200).json({ success: true, message: `Today is ${holidayName ? `a holiday (${holidayName})` : 'a weekend'} - no one was marked absent` })
+        }
+
         const employees = await Employee.find().populate('userId', 'name')
+        const day = new Date(dateStr)  // same UTC-midnight format leave dates are stored in
         let count = 0
         for (const emp of employees) {
             const existing = await Attendance.findOne({ employeeId: emp._id, date: dateStr })
-            if (!existing) {
+            const onLeave  = await Leave.findOne({
+                employeeId: emp._id, status: 'Approved',
+                startDate: { $lte: day }, endDate: { $gte: day },
+            })
+            if (!existing && !onLeave) {
                 await Attendance.create({ employeeId: emp._id, date: dateStr, status: 'Absent', markedBy: 'system' })
                 await createNotification('attendance_absent', `${emp.userId?.name} was absent on ${dateStr}`, '/admin-dashboard/attendance')
                 count++
@@ -135,6 +150,8 @@ const getEmployeeAttendance = async (req, res) => {
     try {
         const { userId } = req.params
         const { month, year } = req.query
+        if (req.user.role !== 'admin' && String(userId) !== String(req.user._id))
+            return res.status(403).json({ success: false, error: 'You can only view your own attendance.' })
         const employee = await Employee.findOne({ userId })
         if (!employee) return res.status(404).json({ success: false, error: 'Employee not found' })
         const query = { employeeId: employee._id }
