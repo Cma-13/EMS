@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE, apiUrl, fileUrl } from '../../utils/apiConfig'
+import { showAlert } from '../AlertPopup'
 
 
 const AddDepartment = () => {
@@ -28,7 +29,7 @@ const AddDepartment = () => {
                }
             } catch (error) {
                 if(error.response && !error.response.data.success){
-                    alert(error.response.data.error);
+                    showAlert(error.response.data.error);
                 
             }
         }
