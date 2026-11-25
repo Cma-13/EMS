@@ -271,7 +271,8 @@ const addLeave = async (req, res) => {
 
 const getLeave = async (req, res) => {
     try {
-        const { id, role } = req.params
+        const { id } = req.params
+        const role = req.user.role  // take role from the login token, not the URL
         let leaves
         if (role === 'admin') {
             leaves = await Leave.find({ employeeId: id })
