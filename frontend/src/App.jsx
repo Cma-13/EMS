@@ -30,10 +30,12 @@ import ForcePasswordChange from './pages/ForcePasswordChange';
 import EmailSettings from './components/dashboard/EmailSettings';
 import SalaryBreakdown from './components/dashboard/SalaryBreakdown';
 import LeaveBalanceAdmin from './components/leave/LeaveBalanceAdmin';
+import { AlertHost } from './components/AlertPopup';
 
 function App() {
   return (
     <BrowserRouter>
+      <AlertHost />
       <Routes>
         {/* ── Public routes — no login needed ── */}
         <Route path='/login' element={<Login />} />
