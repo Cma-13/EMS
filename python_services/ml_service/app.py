@@ -575,6 +575,7 @@ def retrain():
 
 
 @app.route("/predict-leave", methods=["POST"])
+@require_service_key
 def predict_leave():
     """
     Hybrid prediction: RF + Bayesian + Rules.
@@ -585,11 +586,14 @@ def predict_leave():
         return jsonify({"error": "No data provided"}), 400
 
     leave_type_name = data.get("leaveTypeName", "Casual Leave")
-    duration        = max(1, int(data.get("leaveDuration", 1)))
     employee_id     = data.get("employeeId", "")
-    month           = int(data.get("month", datetime.now(TIMEZONE).month))
-    day_of_week     = int(data.get("dayOfWeek", 0))
-    prev_leaves     = int(data.get("previousLeavesTaken", 0))
+    try:
+        duration    = max(1, int(data.get("leaveDuration", 1)))
+        month       = int(data.get("month", datetime.now(TIMEZONE).month))
+        day_of_week = int(data.get("dayOfWeek", 0))
+        prev_leaves = int(data.get("previousLeavesTaken", 0))
+    except (TypeError, ValueError):
+        return jsonify({"error": "leaveDuration, month, dayOfWeek and previousLeavesTaken must be numbers"}), 400
     leave_type_enc  = LT_MAP.get(leave_type_name, 1)
 
     try:
