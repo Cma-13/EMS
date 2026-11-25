@@ -19,7 +19,14 @@ const storage = multer.diskStorage({
     cb(null, Date.now() + path.extname(file.originalname));
   },
 });
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  fileFilter: (req, file, cb) => {
+    if (/^image\/(jpeg|png|webp|gif)$/.test(file.mimetype)) cb(null, true);
+    else cb(new Error("Only JPG, PNG, WEBP or GIF images are allowed."));
+  },
+});
 
 const addEmployee = async (req, res) => {
   try {
@@ -41,6 +48,13 @@ const addEmployee = async (req, res) => {
       return res
         .status(400)
         .json({ success: false, error: "User already registered" });
+    if (!password)
+      return res.status(400).json({ success: false, error: "Password is required" });
+    const existingEmpId = await Employee.findOne({ employeeId });
+    if (existingEmpId)
+      return res
+        .status(400)
+        .json({ success: false, error: `Employee ID ${employeeId} is already used` });
 
     const hashPassword = await bcrypt.hash(password, 10);
     const newUser = new User({
@@ -63,7 +77,13 @@ const addEmployee = async (req, res) => {
       department,
       salary,
     });
-    await newEmployee.save();
+    try {
+      await newEmployee.save();
+    } catch (err) {
+      // Don't leave a login account behind without an employee record
+      await User.findByIdAndDelete(savedUser._id);
+      throw err;
+    }
 
     // Send welcome email with temp password (best-effort — don't fail if email fails)
     let emailSent = false;
@@ -118,6 +138,10 @@ const getEmployee = async (req, res) => {
         .populate("userId", { password: 0 })
         .populate("department");
     }
+    if (!employee)
+      return res.status(404).json({ success: false, error: "Employee not found" });
+    if (req.user.role !== "admin" && String(employee.userId?._id) !== String(req.user._id))
+      return res.status(403).json({ success: false, error: "You can only view your own profile." });
     return res.status(200).json({ success: true, employee });
   } catch (error) {
     return res
