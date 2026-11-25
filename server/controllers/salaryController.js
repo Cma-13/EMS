@@ -70,7 +70,8 @@ const addSalary = async (req, res) => {
 
 const getSalary = async (req, res) => {
     try {
-        const { id, role } = req.params;
+        const { id } = req.params
+        const role = req.user.role;  // take role from the login token, not the URL
         let salary;
         if (role === 'admin') {
             salary = await Salary.find({ employeeId: id }).populate('employeeId', 'employeeId');
