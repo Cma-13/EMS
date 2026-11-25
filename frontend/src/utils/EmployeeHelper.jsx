@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { API_BASE, apiUrl, fileUrl } from '../utils/apiConfig'
 import { useState } from "react";
 import ConfirmModal from '../components/ConfirmModal';
+import { showAlert } from '../components/AlertPopup'
 
 export const columns = [
   { name: "#",          selector: row => row.sno,        width: "55px" },
@@ -37,7 +38,7 @@ export const EmployeeButtons = ({ Id }) => {
       });
       if (r.data.success) window.location.reload();
     } catch (err) {
-      alert(err.response?.data?.error || "Failed to delete employee");
+      showAlert(err.response?.data?.error || "Failed to delete employee");
     }
   };
 
