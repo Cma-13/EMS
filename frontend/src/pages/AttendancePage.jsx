@@ -135,6 +135,7 @@ const AttendancePage = () => {
         try {
             const res = await axios.post(`${FACE_SERVICE_URL}/checkout`, {
                 employeeId: pendingCheckout, earlyExitReason: earlyReason,
+                exitToken: workedInfo?.exitToken,   // one-time token from the face scan
             }, { headers: faceHeaders() })
             if (res.data.success) {
                 setRequestSent(true); setShowReasonBox(false); setScanStatus('warning')
