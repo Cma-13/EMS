@@ -31,6 +31,7 @@ import EmailSettings from './components/dashboard/EmailSettings';
 import SalaryBreakdown from './components/dashboard/SalaryBreakdown';
 import LeaveBalanceAdmin from './components/leave/LeaveBalanceAdmin';
 import { AlertHost } from './components/AlertPopup';
+import NotificationsPage from './components/notifications/NotificationsPage';
 
 function App() {
   return (
@@ -68,6 +69,7 @@ function App() {
           <Route path="email-settings" element={<EmailSettings />} />
           <Route path="salary-breakdown" element={<SalaryBreakdown />} />
           <Route path="leave-balances" element={<LeaveBalanceAdmin />} />
+          <Route path="notifications" element={<NotificationsPage />} />
         </Route>
 
         {/* ── Employee Dashboard ── */}
@@ -81,6 +83,7 @@ function App() {
           <Route path="salary/:id" element={<ViewSalary />} />
           <Route path="setting" element={<Setting />} />
           <Route path="attendance" element={<AttendanceEmployee />} />
+          <Route path="notifications" element={<NotificationsPage />} />
         </Route>
 
         <Route path='*' element={<Navigate to="/login" replace />} />
