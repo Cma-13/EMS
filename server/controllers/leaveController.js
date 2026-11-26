@@ -3,6 +3,7 @@ import Employee from '../models/Employee.js'
 import LeaveBalance from '../models/LeaveBalance.js'
 import Salary from '../models/Salary.js'
 import { createNotification } from './notificationController.js'
+import { countWorkingDays } from '../utils/workdays.js'
 
 // ── Leave Policy ─────────────────────────────────────────
 const POLICY = {
@@ -66,11 +67,22 @@ const validateLeaveRequest = async (employee, leaveType, startDate, endDate, exc
     const start   = new Date(startDate)
     const end     = new Date(endDate)
     const today   = new Date(); today.setHours(0,0,0,0)
-    const duration = getDuration(start, end)
+    // Working days only — weekends (WEEKEND_DAYS) and declared holidays are not counted
+    const { days: duration, skipped } = end >= start
+        ? await countWorkingDays(startDate, endDate)
+        : { days: 0, skipped: [] }
 
     // 1. End after start
     if (end < start) {
         errors.push('End date must be after start date.')
+    }
+
+    // 1b. At least one working day
+    if (end >= start && duration === 0) {
+        errors.push('The dates you picked are all weekends or holidays, so no leave is needed.')
+    } else if (skipped.length > 0) {
+        const list = skipped.map(x => `${new Date(x.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} (${x.reason})`).join(', ')
+        warnings.push(`Only working days are counted: ${list} ${skipped.length > 1 ? 'are' : 'is'} not taken from your leave.`)
     }
 
     // 2. Start not in past
@@ -146,7 +158,7 @@ const validateLeaveRequest = async (employee, leaveType, startDate, endDate, exc
         if (excludeLeaveId) query._id = { $ne: excludeLeaveId }
 
         const monthLeaves = await Leave.find(query)
-        const usedThisMonth = monthLeaves.reduce((sum, l) => sum + getDuration(l.startDate, l.endDate), 0)
+        const usedThisMonth = monthLeaves.reduce((sum, l) => sum + (l.days ?? getDuration(l.startDate, l.endDate)), 0)
 
         // CHANGED: this used to be a hard block (errors.push), fully
         // rejecting the request. Now it's a warning — the days beyond
@@ -195,7 +207,7 @@ const calculatePaidUnpaid = async (employeeId, leaveType, duration, year, startD
             employeeId, leaveType, status: { $ne: 'Rejected' },
             startDate: { $gte: monthStart, $lte: monthEnd }
         })
-        const usedThisMonth = monthLeaves.reduce((sum, l) => sum + getDuration(l.startDate, l.endDate), 0)
+        const usedThisMonth = monthLeaves.reduce((sum, l) => sum + (l.days ?? getDuration(l.startDate, l.endDate)), 0)
         const monthRemaining = Math.max(0, policy.maxPerMonth - usedThisMonth)
         remaining = Math.min(remaining, monthRemaining)
     }
@@ -232,7 +244,7 @@ const addLeave = async (req, res) => {
         }
 
         const start    = new Date(startDate)
-        const duration = getDuration(startDate, endDate)
+        const { days: duration } = await countWorkingDays(startDate, endDate)
         const year     = start.getFullYear()
 
         // Calculate paid/unpaid
@@ -244,7 +256,8 @@ const addLeave = async (req, res) => {
         const newLeave = new Leave({
             employeeId: employee._id,
             leaveType, startDate, endDate, reason,
-            isPaid, paidDays, unpaidDays, salaryDeduction
+            isPaid, paidDays, unpaidDays, salaryDeduction,
+            days: duration,
         })
         await newLeave.save()
 
@@ -466,7 +479,9 @@ const checkLeaveValidation = async (req, res) => {
         const { errors, warnings } = await validateLeaveRequest(employee, leaveType, startDate, endDate)
 
         const start    = startDate && endDate ? new Date(startDate) : new Date()
-        const duration = startDate && endDate ? getDuration(startDate, endDate) : 0
+        const duration = startDate && endDate && new Date(endDate) >= new Date(startDate)
+            ? (await countWorkingDays(startDate, endDate)).days
+            : 0
         const year     = start.getFullYear()
 
         let paidInfo = null
