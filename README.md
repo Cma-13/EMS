@@ -1,156 +1,232 @@
-# EMS - Employee Management System
-## MERN Stack | Face Attendance | AI Leave Prediction | Microservices
+# EMS — Employee Management System
+
+**Face-recognition attendance · ML leave-approval prediction · Payroll · Role-based HR portal**
+
+A full-stack HR platform that automates the daily work of a small company: employees check in with their face, apply for leave against real company policy, and get paid with unpaid days deducted automatically, while admins get a dashboard and a leave-approval score that explains its own reasoning.
+
+Built as a team Final Year Project for BSc. CSIT at ASMT College, Kathmandu.
 
 ---
 
-### About This Project:
-A full-stack Employee Management System built as a Final Year Project for BSc. CSIT.
-It automates HR operations including face recognition attendance, ML-based leave approval prediction, salary management, and real-time notifications.
+## Highlights
+
+- **Face-recognition attendance**: webcam check-in and check-out with automatic Present / Late / Half Day status, duplicate-face protection, and an early-exit request flow that admins approve or reject.
+- **Hybrid ML leave prediction**: a Random Forest, a Bayesian model of each employee's own history, and HR rules are blended with **adaptive weights** into one approval score, with a full breakdown of why.
+- **Policy-driven leave engine**: per-type notice periods, request limits, gaps between requests, monthly caps, yearly balances, and an automatic paid / unpaid split that flows into salary deductions.
+- **Payroll**: salary records with allowances, deductions and unpaid-leave deductions, plus an admin salary breakdown.
+- **Notification centre**: in-app notifications with unread / all tabs, date grouping, mark read / unread, delete and clear, plus optional email notifications.
+- **Secure by design**: JWT auth, admin-only routes enforced on the server, employees limited to their own data, login lockout, forced password change on first login, and service keys between microservices.
 
 ---
 
-### Tech Stack:
-    Frontend     → React.js + Vite + Tailwind CSS          (port 5173)
-    Backend      → Node.js + Express + MongoDB              (port 5000)
-    Face Service → Python Flask + face_recognition          (port 5001)
-    ML Service   → Python Flask + scikit-learn RandomForest (port 5002)
-    Database     → MongoDB (must be running)
+## Architecture
+
+```
+                 ┌──────────────────────────┐
+                 │  React + Vite + Tailwind │  :5173
+                 └─────────────┬────────────┘
+                               │ REST (JWT)
+        ┌──────────────────────┼───────────────────────┐
+        ▼                      ▼                       ▼
+┌───────────────┐   ┌────────────────────┐   ┌────────────────────┐
+│ Node + Express│   │ Face service       │   │ ML service         │
+│ API     :5000 │◄──│ Flask        :5001 │   │ Flask        :5002 │
+└───────┬───────┘   │ face_recognition   │   │ scikit-learn       │
+        │           └─────────┬──────────┘   └─────────┬──────────┘
+        └─────────────────────┼────────────────────────┘
+                              ▼
+                       ┌─────────────┐
+                       │   MongoDB   │
+                       └─────────────┘
+```
+
+| Part | Tech | Port |
+|---|---|---|
+| Frontend | React, Vite, Tailwind CSS, Axios | 5173 |
+| API | Node.js, Express, Mongoose, JWT, bcrypt, Multer, Nodemailer | 5000 |
+| Face service | Python, Flask, face_recognition (dlib), OpenCV | 5001 |
+| ML service | Python, Flask, scikit-learn, pandas | 5002 |
+| Database | MongoDB | 27017 |
 
 ---
 
-### Key Features:
-    1. Face Recognition Attendance  → check-in/checkout via webcam with liveness detection
-    2. AI Leave Prediction          → hybrid model: Random Forest + Bayesian + HR Rules
-    3. Employee Management          → add, edit, delete employees with photo upload
-    4. Department Management        → create and assign departments
-    5. Leave Management             → apply, approve, reject with balance tracking
-    6. Salary Management            → add salary, allowances, deductions, payment history
-    7. Holiday Management           → declare holidays with employee notifications
-    8. Notification System          → real-time notifications for leaves, salary, holidays
-    9. Role Based Access            → Admin and Employee separate dashboards
-    10. Early Exit Workflow         → employee requests early exit, admin approves/rejects
+## Features
+
+### Admin
+- Dashboard with employee, department, leave and salary summaries
+- Employees: add (with photo), edit, view, delete, register face
+- Departments: create, edit, delete (removes everything linked to its employees)
+- Leave: review requests with the ML score and breakdown, approve / reject, view all balances
+- Attendance: daily and monthly views, early-exit approvals, absent check that skips holidays, weekends and approved leave
+- Payroll: add salary, view history and salary breakdown
+- Holidays and email settings
+
+### Employee
+- Personal dashboard with attendance and leave summary
+- Apply for leave with live policy checks and a paid / unpaid preview
+- View own leave history, balance, salary history and attendance
+- Notifications and password change
+
+### Attendance kiosk
+- Shared check-in / check-out screen for the office
+- Early checkout (under 8 hours) asks for a reason and sends it to the admin, protected by a one-time token from the face scan
 
 ---
 
-### Run All Services:
-    Terminal 1: cd server                          → npm install && npm start          (port 5000)
-    Terminal 2: cd frontend                        → npm install && npm run dev        (port 5173)
-    Terminal 3: cd python_services/face_service    → pip install -r requirements.txt && python app.py  (port 5001)
-    Terminal 4: cd python_services/ml_service      → pip install -r requirements.txt && python app.py  (port 5002)
-    Terminal 0: mongod (MongoDB must be running)
+## Leave policy
+
+| Type | Yearly balance | Max per request | Notice | Gap between requests | Monthly cap |
+|---|---|---|---|---|---|
+| Annual | 14 days | 5 days | 7 days | 14 days | — |
+| Casual | 6 days | 3 days | 1 day | 7 days | 3 days |
+| Sick | 8 days | — | none | — | — (admin is alerted after 3 in 30 days) |
+
+Days beyond the remaining balance become **unpaid** and are deducted from salary (monthly salary ÷ 26 per day). The balance is checked again at approval time, so it can never be overdrawn.
+
+**Attendance status:** check-in by 9:00 AM is Present, by 10:00 AM is Late, after that is Half Day. A full day is 8 hours.
 
 ---
 
-### Environment Variables:
-    server/.env
-        PORT=5000
-        MONGODB_URL=mongodb://localhost:27017/ems_new
-        JWT_KEY=your_jwt_secret_key
+## ML leave-approval prediction
 
-    python_services/face_service/.env
-        MONGO_URI=mongodb://localhost:27017
-        DB_NAME=ems_new
-        TOLERANCE=0.45
-        FRONTEND_URL=http://localhost:5173
-        FACE_SERVICE_KEY=ems-face-secret-2024
-        TIMEZONE=Asia/Kathmandu
+| Component | What it uses |
+|---|---|
+| **Random Forest** | 300 trees (max depth 8) trained on leave type, duration, month, weekday, previous leaves, department, age, tenure and attendance reliability |
+| **Bayesian personal rate** | The employee's own approve / reject history, starting from an industry prior and shifting toward their real rate as history grows |
+| **HR rules** | Hard limits on duration by leave type |
 
-    python_services/ml_service/.env
-        MONGO_URI=mongodb://localhost:27017
-        DB_NAME=ems_new
-        FRONTEND_URL=http://localhost:5173
-        ML_SERVICE_KEY=ems-ml-secret-2024
-        TIMEZONE=Asia/Kathmandu
+**Adaptive weights:** with no history, the model leans on the Random Forest (55% / 25% / 20%). As an employee builds up 16+ decided leaves, it shifts to their personal history (12% / 68% / 20%).
 
----
+**Dataset:** the UCI *Absenteeism at Work* dataset (740 real records), cleaned (invalid rows, duplicates, outliers capped at the 99th percentile), feature-engineered to match the EMS schema, and bootstrapped to about 7,000 training rows. **Test accuracy is about 80%.** Attendance reliability is a weak prior in training and comes from live attendance data at prediction time.
 
-### First Time Setup:
-    1. Install Node.js v18+, Python 3.11, MongoDB
-    2. Configure .env files (change CRLF to LF in VS Code)
-    3. cd server → npm install dotenv && npm install
-    4. cd server → node userSeed.js   (creates admin user — run ONCE only)
-    5. For face service use Python 3.11 venv:
-           py -3.11 -m venv venv
-           venv\Scripts\activate
-           pip install -r requirements.txt
-           pip install requests tzdata
-           pip install git+https://github.com/ageitgey/face_recognition_models
-    6. Run all 4 terminals above
-    7. Open http://localhost:5173
+| Score | Verdict |
+|---|---|
+| 72–100 | Likely to be Approved |
+| 52–71 | Could go either way |
+| 35–51 | Unlikely to be Approved |
+| 0–34 | Not Recommended |
+
+Run `python evaluate_model.py` in `python_services/ml_service` for the confusion matrix and classification report.
 
 ---
 
-### Default Login:
-    Email:    admin@gmail.com
-    Password: admin
+## Getting started
+
+### Requirements
+- Node.js 18+
+- Python **3.11** (face_recognition does not support 3.12+)
+- MongoDB running locally
+
+### 1. Environment files
+
+`server/.env`
+```env
+PORT=5000
+MONGODB_URL=mongodb://localhost:27017/ems_new
+JWT_KEY=change_me_to_a_long_random_string
+FACE_SERVICE_KEY=change_me_face_key        # must match the face service
+ADMIN_EMAIL=admin@example.com              # used once by userSeed.js
+ADMIN_PASSWORD=change_me
+WEEKEND_DAYS=6                             # 0=Sun … 6=Sat, comma-separated
+```
+
+`python_services/face_service/.env`
+```env
+MONGO_URI=mongodb://localhost:27017
+DB_NAME=ems_new
+TOLERANCE=0.45
+FRONTEND_URL=http://localhost:5173
+FACE_SERVICE_KEY=change_me_face_key
+TIMEZONE=Asia/Kathmandu
+```
+
+`python_services/ml_service/.env`
+```env
+MONGO_URI=mongodb://localhost:27017
+DB_NAME=ems_new
+FRONTEND_URL=http://localhost:5173
+ML_SERVICE_KEY=change_me_ml_key
+TIMEZONE=Asia/Kathmandu
+```
+
+`frontend/.env`: copy `frontend/.env.example` and set the two keys to match the Python services.
+
+Email (SMTP) settings are entered from **Admin → Email Settings** and need a Gmail App Password.
+
+### 2. Install and create the admin (first time only)
+
+```bash
+cd server && npm install && node userSeed.js
+cd ../frontend && npm install
+
+cd ../python_services/face_service
+py -3.11 -m venv venv && venv\Scripts\activate
+pip install -r requirements.txt
+pip install git+https://github.com/ageitgey/face_recognition_models
+
+cd ../ml_service
+python -m venv venv && venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### 3. Run (four terminals)
+
+| Terminal | Command |
+|---|---|
+| API | `cd server` → `npm start` |
+| Frontend | `cd frontend` → `npm run dev` |
+| Face service | `cd python_services/face_service` → `venv\Scripts\activate` → `python app.py` |
+| ML service | `cd python_services/ml_service` → `venv\Scripts\activate` → `python app.py` |
+
+Open **http://localhost:5173** and log in with the admin you created. The attendance kiosk is at **/attendance**.
 
 ---
 
-### ML Model Details:
-    Dataset Source  → IBM HR Analytics Employee Attrition & Performance (Kaggle)
-    Original rows   → 1,470 real employee records
-    After preprocessing → 6,600+ leave request records
-    Algorithm       → Hybrid: Random Forest (30%) + Bayesian (50%) + HR Rules (20%)
+## Project structure
 
-    Score Interpretation:
-        85-100  → Likely Approved
-        70-84   → Looks Promising
-        55-69   → Could Go Either Way
-        40-54   → Needs Review
-        0-39    → Unlikely to be Approved
-
-    Preprocessing Steps:
-        1. Dropped 24 irrelevant columns from IBM dataset
-        2. Encoded categorical columns (Gender, MaritalStatus, OverTime, Department)
-        3. Generated leave requests per employee based on real IBM attributes
-        4. Derived target variable (Approved/Rejected) using HR approval rules
-        5. Trained Random Forest with 300 estimators, max_depth=8
-
----
-
-### Face Service Messages:
-    "No face detected"              → look at camera in good lighting
-    "Multiple faces detected"       → only one person in frame
-    "Face not recognized"           → not registered or poor lighting
-    "Already checked in"            → shows original check-in time, blocked
-    "Already checked out"           → shows original check-out time, blocked
-    "Not checked in today"          → must check in before checkout
-    "Face already on another account" → duplicate face rejected
+```
+EMS/
+├── server/
+│   ├── controllers/     auth, employee, department, leave, salary, attendance, holiday, notification, dashboard, setting
+│   ├── models/          User, Employee, Department, Leave, LeaveBalance, Salary, Attendance, Holiday, Notification
+│   ├── routes/          REST routes per module
+│   ├── middleware/      JWT auth, admin-only, service-key checks
+│   ├── utils/           email service
+│   └── userSeed.js      creates the first admin
+├── frontend/src/
+│   ├── components/      dashboard, employee, department, leave, salary, attendance, notifications
+│   ├── pages/           Login, dashboards, attendance kiosk, forced password change
+│   ├── context/         auth context
+│   └── utils/           API config, route guards, helpers
+└── python_services/
+    ├── face_service/    face registration, recognition, check-in / check-out
+    └── ml_service/      dataset builder, training, evaluation, prediction API
+```
 
 ---
 
-### Project Structure:
-    EMS/
-    ├── server/                  → Node.js + Express backend
-    │   ├── controllers/         → auth, employee, leave, attendance, salary, holiday...
-    │   ├── models/              → User, Employee, Leave, Attendance, Salary, Notification...
-    │   ├── routes/              → all API routes
-    │   ├── middleware/          → JWT auth middleware
-    │   └── userSeed.js         → creates default admin user
-    │
-    ├── frontend/                → React + Vite
-    │   └── src/
-    │       ├── components/      → dashboard, employee, leave, salary, attendance...
-    │       ├── pages/           → Login, AdminDashboard, EmployeeDashboard, AttendancePage
-    │       ├── context/         → authContext
-    │       └── utils/           → helpers, route guards
-    │
-    └── python_services/
-        ├── face_service/        → Flask face recognition + liveness detection
-        └── ml_service/          → Flask ML leave prediction + hybrid model
+## Security
+
+- Passwords hashed with bcrypt, JWT sessions, lockout after 5 failed logins
+- New employees must change their password on first login
+- Admin-only actions and data ownership are enforced **on the server**, not just hidden in the UI
+- Services talk to each other with service keys; early checkout needs a one-time token from a real face scan
+- Uploads limited to images under 5 MB
+- Secrets live in `.env` files, which are git-ignored
 
 ---
 
-### Known Limitations:
-    1. Max 5 days per Annual Leave request (no Emergency Leave type)
-    2. face_recognition requires Python 3.11 — not compatible with 3.12+
-    3. ML Bayesian component needs 8-10 leave history decisions for accuracy
-    4. Email notifications require Gmail App Password setup
-    5. Web only — no mobile application
+## Known limitations
+
+- The kiosk's service keys are bundled into the frontend, so the kiosk should run on a trusted office machine
+- The daily absent check is started by the admin, not scheduled
+- No automated test suite yet
+- Web only (no mobile app)
 
 ---
 
-### Developer:
-    Name    → Seema Singdan, Manalika Shrestha, Shreya Dhital
-    College → ASMT College, Kathmandu, Nepal
-    Program → BSc. CSIT — Final Year Project (8th Semester)
+## Team
+
+Seema Singdan · Manalika Shrestha · Shreya Dhital
+
+BSc. CSIT Final Year Project, ASMT College (Asian School of Management and Technology), Kathmandu, Nepal
