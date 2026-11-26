@@ -1,5 +1,7 @@
 # EMS - Employee Management System
 
+[![Tests](https://github.com/Cma-13/EMS/actions/workflows/tests.yml/badge.svg)](https://github.com/Cma-13/EMS/actions/workflows/tests.yml)
+
 **Face-recognition attendance · ML leave-approval prediction · Payroll · Role-based HR portal**
 
 A full-stack HR platform that automates the daily work of a small company: employees check in with their face, apply for leave against real company policy, and get paid with unpaid days deducted automatically, while admins get a dashboard and a leave-approval score that explains its own reasoning.
