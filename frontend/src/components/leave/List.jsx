@@ -5,12 +5,16 @@ import { useAuth } from '../../context/authContext'
 import { FaPlus, FaCalendarAlt, FaMoneyBillWave } from 'react-icons/fa'
 import { API_BASE } from '../../utils/apiConfig'
 import { leaveDays } from '../../utils/leaveDays'
+import Pagination from '../Pagination'
+import { usePagination } from '../../utils/usePagination'
 
 const List = () => {
     const [leaves, setLeaves]   = useState(null)
     const [balance, setBalance] = useState(null)
     const { id }   = useParams()
     const { user } = useAuth()
+    const [status, setStatus]     = useState('All')
+    const [leaveType, setLeaveType] = useState('All')
 
     useEffect(() => {
         // Fetch leaves
@@ -25,6 +29,13 @@ const List = () => {
             }).then(r => { if (r.data.success) setBalance(r.data.balance) }).catch(() => {})
         }
     }, [])
+
+    // Filters + newest first + 10 per page (hooks must run before the loading return below)
+    const shownLeaves = (leaves || [])
+        .filter(l => (status === 'All' || l.status === status) && (leaveType === 'All' || l.leaveType === leaveType))
+        .sort((a, b) => new Date(b.appliedAt) - new Date(a.appliedAt))
+    const pg = usePagination(shownLeaves, 10, status + leaveType)
+    const countBy = (s) => (leaves || []).filter(l => s === 'All' || l.status === s).length
 
     if (!leaves) return (
         <div className="flex items-center justify-center h-48">
@@ -103,17 +114,39 @@ const List = () => {
                 </div>
             )}
 
+            {/* Filters */}
+            {leaves.length > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                    <div className="flex gap-1 bg-white border border-stone-200 rounded-xl p-1">
+                        {['All', 'Pending', 'Approved', 'Rejected'].map(s => (
+                            <button key={s} onClick={() => setStatus(s)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${status === s ? 'bg-teal-600 text-white' : 'text-stone-500 hover:bg-stone-100'}`}>
+                                {s} <span className="opacity-70">({countBy(s)})</span>
+                            </button>
+                        ))}
+                    </div>
+                    <select value={leaveType} onChange={e => setLeaveType(e.target.value)}
+                        className="px-3 py-2 border border-stone-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal-400">
+                        <option value="All">All leave types</option>
+                        <option>Annual Leave</option>
+                        <option>Casual Leave</option>
+                        <option>Sick Leave</option>
+                    </select>
+                </div>
+            )}
+
             {/* Table */}
             <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
-                {leaves.length === 0 ? (
+                {shownLeaves.length === 0 ? (
                     <div className="text-center py-16 text-stone-400">
                         <FaCalendarAlt className="text-4xl mx-auto mb-3 opacity-20" />
-                        <p className="font-medium">No leave records found</p>
+                        <p className="font-medium">{leaves.length === 0 ? 'No leave records found' : 'No leaves match these filters'}</p>
                         {user.role === 'employee' && (
                             <p className="text-sm mt-1"></p>
                         )}
                     </div>
                 ) : (
+                    <>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
                             <thead className="text-xs uppercase bg-stone-50 border-b border-stone-100 text-stone-500 font-semibold">
@@ -130,11 +163,11 @@ const List = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-stone-50">
-                                {leaves.map((l, i) => {
+                                {pg.pageItems.map((l, i) => {
                                     const days = leaveDays(l)
                                     return (
                                         <tr key={l._id} className="hover:bg-stone-50 transition">
-                                            <td className="px-5 py-3.5 text-stone-400 text-xs">{i + 1}</td>
+                                            <td className="px-5 py-3.5 text-stone-400 text-xs">{pg.offset + i + 1}</td>
                                             <td className="px-5 py-3.5 font-semibold text-teal-700 text-xs">{l.leaveType}</td>
                                             <td className="px-5 py-3.5 text-stone-600 text-xs">
                                                 {new Date(l.startDate).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}
@@ -160,6 +193,8 @@ const List = () => {
                             </tbody>
                         </table>
                     </div>
+                    <Pagination page={pg.page} pages={pg.pages} total={pg.total} pageSize={pg.pageSize} onChange={pg.setPage} label="leaves" />
+                    </>
                 )}
             </div>
         </div>
