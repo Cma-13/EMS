@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import axios from 'axios'
 import { API_BASE } from '../../utils/apiConfig'
-import { FaCalendarAlt, FaMoneyBillWave, FaUserAlt } from 'react-icons/fa'
+import { FaCalendarAlt, FaMoneyBillWave, FaUserAlt, FaSearch } from 'react-icons/fa'
+import Pagination from '../Pagination'
+import { usePagination } from '../../utils/usePagination'
 
 const LeaveBalanceAdmin = () => {
     const [balances, setBalances] = useState([])
     const [loading, setLoading]   = useState(true)
+    const [search, setSearch]     = useState('')
 
     useEffect(() => {
         axios.get(`${API_BASE}/api/leave/all-balances`, {
@@ -17,6 +20,14 @@ const LeaveBalanceAdmin = () => {
 
     const year = new Date().getFullYear()
 
+    // Search by name, employee ID or department; 10 per page
+    const q = search.trim().toLowerCase()
+    const rows = balances.filter(b => b.employeeId?.userId?.name).filter(b => !q ||
+        b.employeeId.userId.name.toLowerCase().includes(q) ||
+        (b.employeeId.employeeId || '').toLowerCase().includes(q) ||
+        (b.employeeId.department?.dep_name || '').toLowerCase().includes(q))
+    const pg = usePagination(rows, 10, search)
+
     return (
         <div className="p-6 bg-stone-50 min-h-full">
             <div className="mb-6">
@@ -26,9 +37,16 @@ const LeaveBalanceAdmin = () => {
 
             <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
                 <div className="bg-gradient-to-r from-teal-700 to-teal-600 px-6 py-4">
-                    <h3 className="font-bold text-white flex items-center gap-2">
-                        <FaCalendarAlt /> All Employee Leave Balances {year}
-                    </h3>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <h3 className="font-bold text-white flex items-center gap-2">
+                            <FaCalendarAlt /> All Employee Leave Balances {year}
+                        </h3>
+                        <div className="relative">
+                            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-xs" />
+                            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, ID or department"
+                                className="pl-8 pr-3 py-2 rounded-xl text-sm w-64 bg-white focus:outline-none focus:ring-2 focus:ring-teal-300" />
+                        </div>
+                    </div>
                 </div>
 
                 {loading ? (
@@ -42,6 +60,7 @@ const LeaveBalanceAdmin = () => {
    
                     </div>
                 ) : (
+                    <>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
                             <thead className="bg-stone-50 border-b border-stone-200 text-xs uppercase text-stone-500 font-semibold tracking-wide">
@@ -55,7 +74,7 @@ const LeaveBalanceAdmin = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-stone-50">
-                               {balances.filter(b => b.employeeId?.userId?.name).map(b => (
+                               {pg.pageItems.map(b => (
                                     <tr key={b._id} className="hover:bg-stone-50 transition">
                                         <td className="px-5 py-3.5">
                                             <div className="flex items-center gap-3">
@@ -108,7 +127,10 @@ const LeaveBalanceAdmin = () => {
                                 ))}
                             </tbody>
                         </table>
+                        {rows.length === 0 && <p className="text-center py-10 text-sm text-stone-400">No employees match "{search}"</p>}
                     </div>
+                    <Pagination page={pg.page} pages={pg.pages} total={pg.total} pageSize={pg.pageSize} onChange={pg.setPage} label="employees" />
+                    </>
                 )}
             </div>
         </div>
