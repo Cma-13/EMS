@@ -8,6 +8,11 @@ const salarySchema = new Schema({
     deductions:{type: Number},
     netSalary: {type: Number},
     payDate:{type: Date, required: true},
+    // Breakdown of 'deductions' (which is the total)
+    otherDeductions: {type: Number, default: 0},   // typed by the admin (tax, advance...)
+    leaveDeduction:  {type: Number, default: 0},   // unpaid leave
+    absentDays:      {type: Number, default: 0},
+    absentDeduction: {type: Number, default: 0},
     createdAt: {type: Date, default: Date.now},
     updatedAt: {type: Date, default: Date.now},
 });
