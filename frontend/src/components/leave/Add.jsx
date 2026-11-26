@@ -55,18 +55,6 @@ const Add = () => {
         setValidating(false)
     }
 
-    const isDateTaken = (dateStr) => takenDates.includes(dateStr)
-
-    const handleDateChange = (e) => {
-        const { name, value } = e.target
-        setSubmitError('')
-        if (value && isDateTaken(value)) {
-            setSubmitError(`You already have a leave on ${new Date(value).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}. Choose a different date.`)
-            return
-        }
-        setForm(p => ({ ...p, [name]: value }))
-    }
-
     const handleChange = (e) => {
         setSubmitError('')
         setForm(p => ({ ...p, [e.target.name]: e.target.value }))
