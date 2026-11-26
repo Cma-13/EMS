@@ -1,42 +1,47 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import PageLoader from './components/PageLoader';
 import Login from './pages/Login';
-import AdminDashboard from './pages/AdminDashboard';
-import EmployeeDashboard from './pages/EmployeeDashboard';
-import Unauthorized from './pages/Unauthorized';
-import AttendancePage from './pages/AttendancePage';
 import PrivateRoutes from './utils/PrivateRoutes';
 import RoleBaseRoutes from './utils/RoleBaseRoutes';
-import AdminSummary from './components/dashboard/AdminSummary';
-import DepartmentList from './components/department/DepartmentList';
-import AddDepartment from './components/department/AddDepartment';
-import EditDepartment from './components/department/EditDepartment';
-import List from './components/employee/List';
-import Add from './components/employee/Add';
-import View from './components/employee/View';
-import Edit from './components/employee/Edit';
-import AddSalary from './components/salary/Add';
-import ViewSalary from './components/salary/View';
-import Summary from './components/EmployeeDashboard/Summary';
-import LeaveList from './components/leave/List';
-import AddLeave from './components/leave/Add';
-import Setting from './components/EmployeeDashboard/Setting';
-import Table from './components/leave/Table';
-import Detail from './components/leave/Detail';
-import RegisterFace from './components/attendance/RegisterFace';
-import AttendanceAdmin from './components/attendance/AttendanceAdmin';
-import AttendanceEmployee from './components/attendance/AttendanceEmployee';
-import HolidayManager from './components/attendance/HolidayManager';
-import ForcePasswordChange from './pages/ForcePasswordChange';
-import EmailSettings from './components/dashboard/EmailSettings';
-import SalaryBreakdown from './components/dashboard/SalaryBreakdown';
-import LeaveBalanceAdmin from './components/leave/LeaveBalanceAdmin';
 import { AlertHost } from './components/AlertPopup';
-import NotificationsPage from './components/notifications/NotificationsPage';
+
+// Pages load only when opened (smaller first download)
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const EmployeeDashboard = lazy(() => import('./pages/EmployeeDashboard'));
+const Unauthorized = lazy(() => import('./pages/Unauthorized'));
+const AttendancePage = lazy(() => import('./pages/AttendancePage'));
+const AdminSummary = lazy(() => import('./components/dashboard/AdminSummary'));
+const DepartmentList = lazy(() => import('./components/department/DepartmentList'));
+const AddDepartment = lazy(() => import('./components/department/AddDepartment'));
+const EditDepartment = lazy(() => import('./components/department/EditDepartment'));
+const List = lazy(() => import('./components/employee/List'));
+const Add = lazy(() => import('./components/employee/Add'));
+const View = lazy(() => import('./components/employee/View'));
+const Edit = lazy(() => import('./components/employee/Edit'));
+const AddSalary = lazy(() => import('./components/salary/Add'));
+const ViewSalary = lazy(() => import('./components/salary/View'));
+const Summary = lazy(() => import('./components/EmployeeDashboard/Summary'));
+const LeaveList = lazy(() => import('./components/leave/List'));
+const AddLeave = lazy(() => import('./components/leave/Add'));
+const Setting = lazy(() => import('./components/EmployeeDashboard/Setting'));
+const Table = lazy(() => import('./components/leave/Table'));
+const Detail = lazy(() => import('./components/leave/Detail'));
+const RegisterFace = lazy(() => import('./components/attendance/RegisterFace'));
+const AttendanceAdmin = lazy(() => import('./components/attendance/AttendanceAdmin'));
+const AttendanceEmployee = lazy(() => import('./components/attendance/AttendanceEmployee'));
+const HolidayManager = lazy(() => import('./components/attendance/HolidayManager'));
+const ForcePasswordChange = lazy(() => import('./pages/ForcePasswordChange'));
+const EmailSettings = lazy(() => import('./components/dashboard/EmailSettings'));
+const SalaryBreakdown = lazy(() => import('./components/dashboard/SalaryBreakdown'));
+const LeaveBalanceAdmin = lazy(() => import('./components/leave/LeaveBalanceAdmin'));
+const NotificationsPage = lazy(() => import('./components/notifications/NotificationsPage'));
 
 function App() {
   return (
     <BrowserRouter>
       <AlertHost />
+      <Suspense fallback={<PageLoader fullScreen />}>
       <Routes>
         {/* ── Public routes — no login needed ── */}
         <Route path='/login' element={<Login />} />
@@ -88,6 +93,7 @@ function App() {
 
         <Route path='*' element={<Navigate to="/login" replace />} />
       </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }
