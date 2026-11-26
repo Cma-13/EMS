@@ -11,6 +11,7 @@ import {
 } from 'react-icons/fa'
 import { showAlert } from '../AlertPopup'
 import ConfirmModal from '../ConfirmModal'
+import { leaveDays } from '../../utils/leaveDays'
 
 const Detail = () => {
     const { id }   = useParams()
@@ -60,9 +61,9 @@ const Detail = () => {
         const rate     = decided.length > 0 ? Math.round(approved / decided.length * 100) : null
         const avgDuration = decided.length > 0
             ? Math.round(decided.reduce((sum, l) =>
-                sum + (Math.ceil((new Date(l.endDate) - new Date(l.startDate)) / 86400000) + 1), 0) / decided.length)
+                sum + leaveDays(l), 0) / decided.length)
             : 0
-        const currDuration = Math.ceil((new Date(currentLeave.endDate) - new Date(currentLeave.startDate)) / 86400000) + 1
+        const currDuration = leaveDays(currentLeave)
         setConsistency({ approved, rejected, pending, total: decided.length, rate, avgDuration, currDuration })
     }
 
@@ -73,7 +74,7 @@ const Detail = () => {
         try {
             const start    = new Date(leave.startDate)
             const end      = new Date(leave.endDate)
-            const duration = Math.max(1, Math.ceil((end - start) / 86400000) + 1)
+            const duration = Math.max(1, leaveDays(leave))
             const emp      = leave.employeeId
 
             const payload = {
@@ -123,7 +124,7 @@ const Detail = () => {
         return <span className={`px-3 py-1 rounded-full text-xs font-bold ${map[s] || 'bg-stone-100 text-stone-600'}`}>{s}</span>
     }
 
-    const duration = leave ? Math.ceil((new Date(leave.endDate) - new Date(leave.startDate)) / 86400000) + 1 : 0
+    const duration = leave ? leaveDays(leave) : 0
 
     if (loading) return (
         <div className="flex items-center justify-center h-64">
@@ -265,7 +266,7 @@ const Detail = () => {
                                             </thead>
                                             <tbody className="divide-y divide-stone-50">
                                                 {history.slice(0, 10).map(h => {
-                                                    const d = Math.ceil((new Date(h.endDate) - new Date(h.startDate)) / 86400000) + 1
+                                                    const d = leaveDays(h)
                                                     return (
                                                         <tr key={h._id} className="hover:bg-stone-50 transition">
                                                             <td className="px-3 py-2.5 text-xs font-semibold text-teal-700">{h.leaveType}</td>
