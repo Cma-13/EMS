@@ -4,6 +4,7 @@ import axios from 'axios'
 import { useAuth } from '../../context/authContext'
 import { FaPlus, FaCalendarAlt, FaMoneyBillWave } from 'react-icons/fa'
 import { API_BASE } from '../../utils/apiConfig'
+import { leaveDays } from '../../utils/leaveDays'
 
 const List = () => {
     const [leaves, setLeaves]   = useState(null)
@@ -46,7 +47,6 @@ const List = () => {
         return <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-600 border border-red-200">{unpaidDays}d Unpaid</span>
     }
 
-    const getDuration = (start, end) => Math.ceil((new Date(end) - new Date(start)) / 86400000) + 1
 
     return (
         <div className="p-6 bg-stone-50 min-h-full">
@@ -131,7 +131,7 @@ const List = () => {
                             </thead>
                             <tbody className="divide-y divide-stone-50">
                                 {leaves.map((l, i) => {
-                                    const days = getDuration(l.startDate, l.endDate)
+                                    const days = leaveDays(l)
                                     return (
                                         <tr key={l._id} className="hover:bg-stone-50 transition">
                                             <td className="px-5 py-3.5 text-stone-400 text-xs">{i + 1}</td>
