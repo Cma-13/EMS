@@ -11,6 +11,7 @@ const leaveSchema = new Schema({
     startDate:  { type: Date, required: true },
     endDate:    { type: Date, required: true },
     reason:     { type: String, required: true },
+    days:       { type: Number },   // working days (weekends and holidays not counted); missing on older leaves
     status: {
         type: String,
         enum: ['Pending', 'Approved', 'Rejected'],
