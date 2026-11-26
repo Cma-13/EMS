@@ -16,7 +16,7 @@ Built as a team Final Year Project for BSc. CSIT at ASMT College, Kathmandu.
 - **Hybrid ML leave prediction**: a Random Forest, a Bayesian model of each employee's own history, and HR rules are blended with **adaptive weights** into one approval score, with a full breakdown of why.
 - **Policy-driven leave engine**: per-type notice periods, request limits, gaps between requests, monthly caps, yearly balances, and an automatic paid / unpaid split that flows into salary deductions.
 - **Payroll**: salary records with allowances, deductions and unpaid-leave deductions, plus an admin salary breakdown.
-- **Notification centre**: in-app notifications with unread / all tabs, date grouping, mark read / unread, delete and clear, plus optional email notifications.
+- **Notification centre**: in-app notifications with unread / all tabs, date grouping, mark read / unread, delete and clear. New employees get a welcome email with their login details (Gmail SMTP).
 - **Secure by design**: JWT auth, admin-only routes enforced on the server, employees limited to their own data, login lockout, forced password change on first login, and service keys between microservices.
 
 ---
