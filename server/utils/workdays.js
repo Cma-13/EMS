@@ -1,4 +1,7 @@
 import Holiday from '../models/Holiday.js'
+import { isWeekendKey, workingDaysIn } from './hrRules.js'
+
+export { isWeekendKey }
 
 // Working-day helpers shared by leave and payroll.
 // Dates are handled as 'YYYY-MM-DD' keys in UTC, the same way leave dates
@@ -12,9 +15,6 @@ export const toKey = (d) => {
     if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0, 10)
     return new Date(d).toISOString().slice(0, 10)
 }
-
-export const isWeekendKey = (key, weekends = weekendDays()) =>
-    weekends.includes(new Date(`${key}T00:00:00Z`).getUTCDay())
 
 // Holidays between two keys (inclusive) as a Map key -> name
 export const holidayMap = async (fromKey, toKey_) => {
@@ -40,15 +40,7 @@ export const countWorkingDays = async (start, end) => {
     const keys = eachDayKey(start, end)
     if (!keys.length) return { days: 0, skipped: [] }
     const holidays = await holidayMap(keys[0], keys[keys.length - 1])
-    const weekends = weekendDays()
-    const skipped = []
-    let days = 0
-    for (const k of keys) {
-        if (holidays.has(k))               skipped.push({ date: k, reason: holidays.get(k) })
-        else if (isWeekendKey(k, weekends)) skipped.push({ date: k, reason: 'Weekend' })
-        else days++
-    }
-    return { days, skipped }
+    return workingDaysIn(keys, holidays, weekendDays())
 }
 
 // 'YYYY-MM' of a pay date, without timezone surprises
