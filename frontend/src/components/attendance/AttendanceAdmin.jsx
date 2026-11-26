@@ -46,7 +46,8 @@ const AttendanceAdmin = () => {
     const fetchEarlyExitRequests = async () => {
         try {
             const r = await axios.get(`${API_BASE}/api/notifications`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+                params:  { limit: 200 },   // look past the latest 20 so older pending requests aren't missed
             })
             if (r.data.success) {
                 const pending = r.data.notifications.filter(
