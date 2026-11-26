@@ -1,58 +1,125 @@
 import Salary from "../models/Salary.js";
 import Employee from "../models/Employee.js";
 import Leave from "../models/Leave.js";
+import Attendance from "../models/Attendance.js";
 import { createNotification } from "./notificationController.js";
+import { toKey, isWeekendKey, holidayMap, monthKeyOf, weekendDays } from "../utils/workdays.js";
+
+const WORK_DAYS_PER_MONTH = 26;   // daily rate = monthly basic / 26
+
+// Everything the system deducts by itself for one pay month:
+//   1. unpaid leave days (amount already worked out when the leave was approved)
+//   2. Absent days from attendance, at basic / 26 per day
+// Used both for the salary-form preview and when the salary is saved,
+// so the two can never disagree.
+const computeAutoDeductions = async (employeeId, payDate, basic) => {
+    const month      = monthKeyOf(payDate);                       // 'YYYY-MM'
+    const [y, m]     = month.split('-').map(Number);
+    const monthStart = new Date(Date.UTC(y, m - 1, 1));
+    const monthEnd   = new Date(Date.UTC(y, m, 0));
+
+    // 1. Unpaid leave starting this month, not yet taken in a salary
+    const unpaidLeaves = await Leave.find({
+        employeeId,
+        status: 'Approved',
+        unpaidDays: { $gt: 0 },
+        deductionApplied: false,
+        startDate: { $gte: monthStart, $lte: monthEnd },
+    });
+    const leaveDeduction = unpaidLeaves.reduce((sum, l) => sum + (l.salaryDeduction || 0), 0);
+
+    // 2. Absent days this month, not yet deducted.
+    // Never deduct an "absent" day that was really a weekend, a holiday or an
+    // approved leave day (older records could have been marked that way).
+    const absents = await Attendance.find({
+        employeeId,
+        status: 'Absent',
+        salaryDeducted: { $ne: true },
+        date: { $regex: `^${month}` },
+    }).sort({ date: 1 });
+
+    const holidays = await holidayMap(`${month}-01`, `${month}-31`);
+    const weekends = weekendDays();
+    const approvedLeaves = await Leave.find({
+        employeeId, status: 'Approved',
+        startDate: { $lte: monthEnd }, endDate: { $gte: monthStart },
+    });
+    const onLeave = (key) => approvedLeaves.some(l => toKey(l.startDate) <= key && key <= toKey(l.endDate));
+
+    const countedAbsents = absents.filter(a =>
+        !isWeekendKey(a.date, weekends) && !holidays.has(a.date) && !onLeave(a.date));
+
+    const dailyRate       = (Number(basic) || 0) / WORK_DAYS_PER_MONTH;
+    const absentDays      = countedAbsents.length;
+    const absentDeduction = Math.round(dailyRate * absentDays);
+
+    return { unpaidLeaves, leaveDeduction, countedAbsents, absentDays, absentDeduction };
+};
+
+// GET /api/salary/preview/:employeeId?payDate=YYYY-MM-DD&basic=30000  (admin)
+const previewDeductions = async (req, res) => {
+    try {
+        const { employeeId } = req.params;
+        const { payDate, basic } = req.query;
+        const d = await computeAutoDeductions(employeeId, payDate, basic);
+        return res.status(200).json({
+            success: true,
+            leaveDeduction:  d.leaveDeduction,
+            leaves:          d.unpaidLeaves.map(l => ({ _id: l._id, leaveType: l.leaveType, unpaidDays: l.unpaidDays, salaryDeduction: l.salaryDeduction })),
+            absentDays:      d.absentDays,
+            absentDates:     d.countedAbsents.map(a => a.date),
+            absentDeduction: d.absentDeduction,
+            dailyRate:       Math.round((Number(basic) || 0) / WORK_DAYS_PER_MONTH),
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, error: 'salary preview server error' });
+    }
+};
 
 const addSalary = async (req, res) => {
     try {
         const { employeeId, basicSalary, allowances, deductions, payDate } = req.body;
         const basic  = parseInt(basicSalary)  || 0;
         const allow  = parseInt(allowances)   || 0;
-        let   deduct = parseInt(deductions)   || 0;
+        const other  = parseInt(deductions)   || 0;   // tax, advance... typed by the admin
 
-        // Auto-fold in unpaid-leave deductions for this employee that
-        // haven't been applied to a salary record yet (e.g. an Annual
-        // Leave request that went over the monthly/yearly balance and
-        // was approved as partly unpaid). This is what was missing
-        // before — unpaidDays/salaryDeduction were being calculated and
-        // stored on the Leave doc, but never actually pulled into
-        // payroll.
-        const pay = payDate ? new Date(payDate) : new Date()
-        const periodStart = new Date(pay.getFullYear(), pay.getMonth(), 1)
-        const periodEnd   = new Date(pay.getFullYear(), pay.getMonth() + 1, 0)
+        const { unpaidLeaves, leaveDeduction, countedAbsents, absentDays, absentDeduction } =
+            await computeAutoDeductions(employeeId, payDate, basic);
 
-        const unpaidLeaves = await Leave.find({
-            employeeId,
-            status: 'Approved',
-            unpaidDays: { $gt: 0 },
-            deductionApplied: false,
-            startDate: { $gte: periodStart, $lte: periodEnd },
-        })
-        const leaveDeduction = unpaidLeaves.reduce((sum, l) => sum + (l.salaryDeduction || 0), 0)
-        deduct += leaveDeduction
-
+        const deduct = other + leaveDeduction + absentDeduction;
         if (deduct > basic + allow) {
-            return res.status(400).json({ success: false, error: 'Deductions (including unpaid leave) cannot exceed Basic Salary + Allowances.' });
+            return res.status(400).json({ success: false, error: 'Deductions (including unpaid leave and absent days) cannot exceed Basic Salary + Allowances.' });
         }
 
         const totalSalary = basic + allow - deduct;
-        const newSalary = new Salary({ employeeId, basicSalary: basic, allowances: allow, deductions: deduct, netSalary: totalSalary, payDate });
+        const newSalary = new Salary({
+            employeeId, basicSalary: basic, allowances: allow, deductions: deduct, netSalary: totalSalary, payDate,
+            otherDeductions: other, leaveDeduction, absentDays, absentDeduction,
+        });
         await newSalary.save();
 
+        // Mark what was used so it is never deducted twice
         if (unpaidLeaves.length) {
             await Leave.updateMany(
                 { _id: { $in: unpaidLeaves.map(l => l._id) } },
                 { $set: { deductionApplied: true } }
-            )
+            );
+        }
+        if (countedAbsents.length) {
+            await Attendance.updateMany(
+                { _id: { $in: countedAbsents.map(a => a._id) } },
+                { $set: { salaryDeducted: true } }
+            );
         }
 
         // Find employee to get userId for notification
         const employee = await Employee.findById(employeeId).populate('userId', 'name');
         if (employee?.userId) {
             const payDateStr = payDate ? new Date(payDate).toLocaleDateString('en-NP') : 'today';
-            const deductionNote = leaveDeduction > 0
-                ? ` (includes Rs. ${leaveDeduction.toLocaleString()} unpaid-leave deduction)`
-                : '';
+            const notes = [];
+            if (leaveDeduction > 0)  notes.push(`Rs. ${leaveDeduction.toLocaleString()} for unpaid leave`);
+            if (absentDeduction > 0) notes.push(`Rs. ${absentDeduction.toLocaleString()} for ${absentDays} absent day${absentDays > 1 ? 's' : ''}`);
+            const deductionNote = notes.length ? ` (after deducting ${notes.join(' and ')})` : '';
             await createNotification(
                 'salary_paid',
                 `Your salary of Rs. ${totalSalary.toLocaleString()} has been credited for ${payDateStr}${deductionNote}.`,
@@ -62,7 +129,7 @@ const addSalary = async (req, res) => {
             );
         }
 
-        return res.status(200).json({ success: true, leaveDeduction });
+        return res.status(200).json({ success: true, leaveDeduction, absentDays, absentDeduction });
     } catch (error) {
         return res.status(500).json({ success: false, error: 'salary add server error' });
     }
@@ -86,4 +153,4 @@ const getSalary = async (req, res) => {
     }
 }
 
-export { addSalary, getSalary };
+export { addSalary, getSalary, previewDeductions };
