@@ -3,7 +3,9 @@ import { fetchDepartments, getEmployees } from '../../utils/EmployeeHelper'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import { API_BASE } from '../../utils/apiConfig'
-import { FaInfoCircle, FaExclamationTriangle, FaCheckCircle, FaCalendarTimes } from 'react-icons/fa'
+import { FaExclamationTriangle, FaCalendarTimes, FaUserTimes } from 'react-icons/fa'
+
+const authHeader = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` })
 
 const Add = () => {
     const [salary, setSalary]     = useState({ employeeId:'', basicSalary:'', allowances:'', deductions:'', payDate:'' })
@@ -12,71 +14,56 @@ const Add = () => {
     const [error, setError]             = useState('')
     const [empSalary, setEmpSalary]     = useState(null)
     const [salaryWarning, setSalaryWarning] = useState('')
-    const [unpaidInfo, setUnpaidInfo]   = useState(null)  // unpaid leave deduction
+    // What the server will deduct by itself: unpaid leave + absent days
+    const [auto, setAuto]               = useState(null)
     const navigate = useNavigate()
 
     useEffect(() => { fetchDepartments().then(setDepartments) }, [])
 
+    // Ask the server what it will deduct automatically for this employee and pay month.
+    // The server uses the same calculation when saving, so the preview always matches.
+    const loadAutoDeductions = async (empId, payDate, basic) => {
+        if (!empId) { setAuto(null); return }
+        try {
+            const r = await axios.get(`${API_BASE}/api/salary/preview/${empId}`, {
+                headers: authHeader(),
+                params:  { payDate: payDate || new Date().toLocaleDateString('en-CA'), basic: basic || 0 },
+            })
+            if (r.data.success) setAuto(r.data)
+        } catch { setAuto(null) }
+    }
+
     const handleDepartment = async (e) => {
         setEmployees(await getEmployees(e.target.value))
         setSalary(p => ({ ...p, employeeId: '', basicSalary: '', allowances: '', deductions: '' }))
-        setEmpSalary(null); setSalaryWarning(''); setUnpaidInfo(null)
+        setEmpSalary(null); setSalaryWarning(''); setAuto(null)
     }
 
     const handleEmployeeChange = async (e) => {
         const empId = e.target.value
         setSalary(p => ({ ...p, employeeId: empId }))
-        setSalaryWarning(''); setUnpaidInfo(null)
+        setSalaryWarning(''); setAuto(null)
         if (!empId) { setEmpSalary(null); return }
 
+        let basic = salary.basicSalary
         try {
-            const r = await axios.get(`${API_BASE}/api/employee/${empId}`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            })
+            const r = await axios.get(`${API_BASE}/api/employee/${empId}`, { headers: authHeader() })
             if (r.data.success) {
                 const sal = r.data.employee?.salary
                 setEmpSalary(sal || null)
-                if (sal) setSalary(p => ({ ...p, employeeId: empId, basicSalary: sal }))
-            }
-
-            await loadUnpaidLeaves(empId, salary.payDate)
-        } catch {}
-    }
-
-    // Unpaid leave for the pay month. This is only a PREVIEW: the server adds this
-    // deduction itself when the salary is saved. (It used to be copied into the
-    // Deductions box as well, so it was subtracted twice.)
-    const loadUnpaidLeaves = async (empId, payDate) => {
-        setUnpaidInfo(null)
-        if (!empId) return
-        try {
-            const payMonth = payDate ? new Date(payDate) : new Date()
-            const year  = payMonth.getFullYear()
-            const month = payMonth.getMonth() + 1
-            const leaveRes = await axios.get(`${API_BASE}/api/leave/${empId}/admin`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            })
-            if (leaveRes.data.success) {
-                const approvedUnpaid = leaveRes.data.leaves.filter(l =>
-                    l.status === 'Approved' &&
-                    l.unpaidDays > 0 &&
-                    !l.deductionApplied &&                       // not already taken in an earlier salary
-                    new Date(l.startDate).getFullYear() === year &&
-                    new Date(l.startDate).getMonth() + 1 === month
-                )
-                const totalUnpaidDays = approvedUnpaid.reduce((sum, l) => sum + l.unpaidDays, 0)
-                const totalDeduction  = approvedUnpaid.reduce((sum, l) => sum + (l.salaryDeduction || 0), 0)
-                if (totalDeduction > 0)
-                    setUnpaidInfo({ days: totalUnpaidDays, deduction: totalDeduction, leaves: approvedUnpaid })
+                if (sal) { basic = sal; setSalary(p => ({ ...p, employeeId: empId, basicSalary: sal })) }
             }
         } catch {}
+        loadAutoDeductions(empId, salary.payDate, basic)
     }
 
     const handleChange = (e) => {
         const { name, value } = e.target
         setError('')
         setSalary(p => ({ ...p, [name]: value }))
-        if (name === 'payDate' && salary.employeeId) loadUnpaidLeaves(salary.employeeId, value)
+        // Pay month or basic salary changed -> re-check automatic deductions
+        if (name === 'payDate' && salary.employeeId)     loadAutoDeductions(salary.employeeId, value, salary.basicSalary)
+        if (name === 'basicSalary' && salary.employeeId) loadAutoDeductions(salary.employeeId, salary.payDate, value)
         if (name === 'basicSalary' && empSalary) {
             const diff = parseInt(value) - parseInt(empSalary)
             if (Math.abs(diff) > 0) setSalaryWarning(`Employee recorded salary is Rs. ${parseInt(empSalary).toLocaleString()}`)
@@ -84,37 +71,42 @@ const Add = () => {
         }
     }
 
+    const basic        = parseInt(salary.basicSalary) || 0
+    const allow        = parseInt(salary.allowances)  || 0
+    const deduct       = parseInt(salary.deductions)  || 0
+    const leaveDeduct  = auto?.leaveDeduction  || 0      // added by the server on save
+    const absentDeduct = auto?.absentDeduction || 0      // added by the server on save
+    const net          = basic + allow - deduct - leaveDeduct - absentDeduct
+
     const handleSubmit = async (e) => {
         e.preventDefault()
-        const basic  = parseInt(salary.basicSalary) || 0
-        const allow  = parseInt(salary.allowances)  || 0
-        const deduct = parseInt(salary.deductions)  || 0
-        const leaveDeduct = unpaidInfo?.deduction || 0
         if (basic <= 0) { setError('Basic salary must be greater than 0.'); return }
-        if (deduct + leaveDeduct > basic + allow) { setError('Deductions (including unpaid leave) cannot exceed Basic Salary + Allowances.'); return }
+        if (deduct + leaveDeduct + absentDeduct > basic + allow) {
+            setError('Deductions (including unpaid leave and absent days) cannot exceed Basic Salary + Allowances.'); return
+        }
         try {
-            const r = await axios.post(`${API_BASE}/api/salary/add`, salary, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            })
+            const r = await axios.post(`${API_BASE}/api/salary/add`, salary, { headers: authHeader() })
             if (r.data.success) navigate('/admin-dashboard/employees')
         } catch (error) { setError(error.response?.data?.error || 'Failed to add salary') }
     }
 
-    const basic  = parseInt(salary.basicSalary) || 0
-    const allow  = parseInt(salary.allowances)  || 0
-    const deduct = parseInt(salary.deductions)  || 0
-    const leaveDeduct = unpaidInfo?.deduction || 0          // added by the server on save
-    const net    = basic + allow - deduct - leaveDeduct
-
     const inputCls = 'mt-1 p-2.5 block w-full border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white'
     const labelCls = 'block text-sm font-semibold text-stone-700'
+    const fmtDate  = (k) => new Date(`${k}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
+    const breakdown = [
+        { label: 'Basic',            value: basic,        cls: 'text-stone-700' },
+        { label: '+ Allowances',     value: allow,        cls: 'text-emerald-600' },
+        { label: '− Other',          value: deduct,       cls: 'text-red-500' },
+        leaveDeduct  > 0 && { label: '− Unpaid leave', value: leaveDeduct,  cls: 'text-red-500' },
+        absentDeduct > 0 && { label: '− Absent days',  value: absentDeduct, cls: 'text-red-500' },
+    ].filter(Boolean)
 
     return (
         <div className="p-6 bg-stone-50 min-h-full">
             <div className="max-w-2xl mx-auto">
                 <div className="mb-6">
                     <h2 className="text-2xl font-bold text-stone-800">Add Salary Record</h2>
-
                 </div>
 
                 {!departments ? (
@@ -128,7 +120,6 @@ const Add = () => {
                                 <FaExclamationTriangle className="flex-shrink-0 mt-0.5" /> {error}
                             </div>
                         )}
-
 
                         <form onSubmit={handleSubmit}>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -156,21 +147,18 @@ const Add = () => {
                                             <FaExclamationTriangle className="text-xs" /> {salaryWarning}
                                         </p>
                                     )}
-
                                 </div>
 
                                 <div>
                                     <label className={labelCls}>Allowances (Rs.)</label>
                                     <input type="number" name="allowances" value={salary.allowances}
                                         onChange={handleChange} placeholder="e.g. 5000" min="0" className={inputCls} required />
-                      
                                 </div>
 
                                 <div>
                                     <label className={labelCls}>Other Deductions (Rs.)</label>
                                     <input type="number" name="deductions" value={salary.deductions}
                                         onChange={handleChange} placeholder="e.g. 0 (tax, advance...)" min="0" className={inputCls} required />
-                                   
                                 </div>
 
                                 <div className="md:col-span-2">
@@ -179,49 +167,53 @@ const Add = () => {
                                 </div>
                             </div>
 
-                            {/* Unpaid leave auto-deduction info */}
-                            {unpaidInfo && (
+                            {/* Unpaid leave (added automatically) */}
+                            {leaveDeduct > 0 && (
                                 <div className="mt-5 p-4 bg-red-50 border border-red-200 rounded-xl">
                                     <p className="text-sm font-bold text-red-700 flex items-center gap-2 mb-2">
                                         <FaCalendarTimes /> Unpaid Leave Deduction (added automatically)
                                     </p>
                                     <p className="text-xs text-red-600 mb-2">
-                                        This employee has <b>{unpaidInfo.days} unpaid leave day(s)</b> approved this month.
-                                        <b>Rs. {unpaidInfo.deduction.toLocaleString()}</b> will be deducted automatically when you save. Don't add it to Other Deductions.
+                                        <b>Rs. {leaveDeduct.toLocaleString()}</b> will be deducted automatically when you save. Don't add it to Other Deductions.
                                     </p>
                                     <div className="space-y-1">
-                                        {unpaidInfo.leaves.map(l => (
+                                        {auto.leaves.map(l => (
                                             <div key={l._id} className="text-xs text-red-500 flex justify-between">
                                                 <span>{l.leaveType} - {l.unpaidDays} unpaid day(s)</span>
-                                                <span>-Rs. {(l.salaryDeduction||0).toLocaleString()}</span>
+                                                <span>-Rs. {(l.salaryDeduction || 0).toLocaleString()}</span>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             )}
 
+                            {/* Absent days (added automatically) */}
+                            {auto?.absentDays > 0 && (
+                                <div className="mt-5 p-4 bg-orange-50 border border-orange-200 rounded-xl">
+                                    <p className="text-sm font-bold text-orange-700 flex items-center gap-2 mb-2">
+                                        <FaUserTimes /> Absent Days Deduction (added automatically)
+                                    </p>
+                                    <p className="text-xs text-orange-700 mb-2">
+                                        <b>{auto.absentDays} absent day{auto.absentDays > 1 ? 's' : ''}</b> this month
+                                        × Rs. {auto.dailyRate.toLocaleString()}/day (basic ÷ 26) = <b>Rs. {absentDeduct.toLocaleString()}</b>,
+                                        deducted automatically when you save.
+                                    </p>
+                                    <p className="text-xs text-orange-600">
+                                        {auto.absentDates.map(fmtDate).join(', ')}
+                                    </p>
+                                </div>
+                            )}
+
                             {/* Net Salary Preview */}
                             <div className={`mt-5 p-4 rounded-xl border ${net < 0 ? 'bg-red-50 border-red-200' : 'bg-teal-50 border-teal-200'}`}>
                                 <p className="text-xs font-semibold text-stone-500 mb-3">Monthly Salary Breakdown</p>
-                                <div className={`grid ${leaveDeduct ? 'grid-cols-4' : 'grid-cols-3'} gap-3 mb-3 text-sm text-center`}>
-                                    <div>
-                                        <p className="text-stone-400 text-xs">Basic</p>
-                                        <p className="font-bold text-stone-700">Rs. {basic.toLocaleString()}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-stone-400 text-xs">+ Allowances</p>
-                                        <p className="font-bold text-emerald-600">Rs. {allow.toLocaleString()}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-stone-400 text-xs">− Deductions</p>
-                                        <p className="font-bold text-red-500">Rs. {deduct.toLocaleString()}</p>
-                                    </div>
-                                    {leaveDeduct > 0 && (
-                                        <div>
-                                            <p className="text-stone-400 text-xs">− Unpaid leave</p>
-                                            <p className="font-bold text-red-500">Rs. {leaveDeduct.toLocaleString()}</p>
+                                <div className="grid gap-3 mb-3 text-sm text-center" style={{ gridTemplateColumns: `repeat(${breakdown.length}, minmax(0, 1fr))` }}>
+                                    {breakdown.map(b => (
+                                        <div key={b.label}>
+                                            <p className="text-stone-400 text-xs">{b.label}</p>
+                                            <p className={`font-bold ${b.cls}`}>Rs. {b.value.toLocaleString()}</p>
                                         </div>
-                                    )}
+                                    ))}
                                 </div>
                                 <div className="border-t border-teal-200 pt-3 text-center">
                                     <p className="text-xs text-stone-500 mb-0.5">Net Monthly Salary</p>
