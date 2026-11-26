@@ -4,6 +4,7 @@ import LeaveBalance from '../models/LeaveBalance.js'
 import Salary from '../models/Salary.js'
 import { createNotification } from './notificationController.js'
 import { countWorkingDays } from '../utils/workdays.js'
+import { toLocalDay, noticeDaysUntil, splitPaidUnpaid, deductionFor } from '../utils/hrRules.js'
 
 // ── Leave Policy ─────────────────────────────────────────
 const POLICY = {
@@ -36,13 +37,7 @@ const POLICY = {
 // Admin can access anyone; an employee only their own records
 const canAccess = (req, userId) => req.user.role === 'admin' || String(userId) === String(req.user._id)
 
-// Read a 'YYYY-MM-DD' string as a LOCAL date (new Date('2026-11-25') is UTC midnight,
-// which is 05:45 in Nepal and made notice periods one day too lenient)
-const toLocalDay = (d) => {
-    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d))
-    if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
-    const x = new Date(d); x.setHours(0, 0, 0, 0); return x
-}
+// toLocalDay, noticeDaysUntil, splitPaidUnpaid and deductionFor live in utils/hrRules.js (covered by tests)
 
 const getDuration = (start, end) => {
     const s = new Date(start), e = new Date(end)
@@ -113,7 +108,7 @@ const validateLeaveRequest = async (employee, leaveType, startDate, endDate, exc
 
     // 3. Notice period
     if (policy.minNoticeDays > 0) {
-        const noticeDays = Math.round((toLocalDay(startDate) - today) / 86400000)
+        const noticeDays = noticeDaysUntil(startDate)
         if (noticeDays < policy.minNoticeDays) {
             errors.push(`${leaveType} requires at least ${policy.minNoticeDays} day(s) advance notice. Please apply by ${new Date(start - policy.minNoticeDays * 86400000).toLocaleDateString()}.`)
         }
@@ -212,8 +207,7 @@ const calculatePaidUnpaid = async (employeeId, leaveType, duration, year, startD
         remaining = Math.min(remaining, monthRemaining)
     }
 
-    const paidDays   = Math.min(duration, remaining)
-    const unpaidDays = Math.max(0, duration - remaining)
+    const { paidDays, unpaidDays } = splitPaidUnpaid(duration, remaining)
 
     // Get employee salary for deduction calculation
     let salaryDeduction = 0
@@ -221,8 +215,7 @@ const calculatePaidUnpaid = async (employeeId, leaveType, duration, year, startD
         const emp    = await Employee.findById(employeeId)
         const salary = await Salary.findOne({ employeeId }).sort({ payDate: -1 })
         const monthlySalary = salary?.basicSalary || emp?.salary || 0
-        const dailyRate     = monthlySalary / 26  // 26 working days per month
-        salaryDeduction     = Math.round(dailyRate * unpaidDays)
+        salaryDeduction     = deductionFor(monthlySalary, unpaidDays)  // monthly / 26 per day
     }
 
     return { paidDays, unpaidDays, isPaid: unpaidDays === 0, salaryDeduction }
