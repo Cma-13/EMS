@@ -4,6 +4,7 @@ import axios from 'axios'
 import DataTable from 'react-data-table-component'
 import { FaEye, FaSearch, FaMagic } from 'react-icons/fa'
 import { API_BASE, apiUrl, fileUrl } from '../../utils/apiConfig'
+import { leaveDays } from '../../utils/leaveDays'
 
 const Table = () => {
     const [leaves, setLeaves]         = useState(null)
@@ -88,7 +89,7 @@ const Table = () => {
         { name: 'Department',  selector: row => row.employeeId?.department?.dep_name, width: '130px' },
         { name: 'Leave Type',  cell: leaveTypeCell,                              width: '140px' },
         { name: 'Days',
-          selector: row => Math.ceil((new Date(row.endDate) - new Date(row.startDate)) / 86400000) + 1,
+          selector: row => leaveDays(row),
           width: '70px'
         },
         { name: 'Applied',
