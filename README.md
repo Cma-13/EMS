@@ -1,4 +1,4 @@
-# EMS — Employee Management System
+# EMS - Employee Management System
 
 **Face-recognition attendance · ML leave-approval prediction · Payroll · Role-based HR portal**
 
