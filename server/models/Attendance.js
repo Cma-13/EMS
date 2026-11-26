@@ -24,6 +24,7 @@ const attendanceSchema = new Schema({
         enum: ['office_face_recognition', 'manual', 'system'],
         default: 'office_face_recognition'
     },
+    salaryDeducted: { type: Boolean, default: false },  // true once an Absent day has been deducted in a salary
     createdAt: { type: Date, default: Date.now }
 });
 
