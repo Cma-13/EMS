@@ -3,9 +3,9 @@ import Employee from "../models/Employee.js";
 import Leave from "../models/Leave.js";
 import Attendance from "../models/Attendance.js";
 import { createNotification } from "./notificationController.js";
-import { toKey, isWeekendKey, holidayMap, monthKeyOf, weekendDays } from "../utils/workdays.js";
+import { toKey, holidayMap, monthKeyOf, weekendDays } from "../utils/workdays.js";
+import { WORK_DAYS_PER_MONTH, countableAbsents, deductionFor } from "../utils/hrRules.js";
 
-const WORK_DAYS_PER_MONTH = 26;   // daily rate = monthly basic / 26
 
 // Everything the system deducts by itself for one pay month:
 //   1. unpaid leave days (amount already worked out when the leave was approved)
@@ -44,14 +44,11 @@ const computeAutoDeductions = async (employeeId, payDate, basic) => {
         employeeId, status: 'Approved',
         startDate: { $lte: monthEnd }, endDate: { $gte: monthStart },
     });
-    const onLeave = (key) => approvedLeaves.some(l => toKey(l.startDate) <= key && key <= toKey(l.endDate));
+    const leaveRanges = approvedLeaves.map(l => ({ start: toKey(l.startDate), end: toKey(l.endDate) }));
 
-    const countedAbsents = absents.filter(a =>
-        !isWeekendKey(a.date, weekends) && !holidays.has(a.date) && !onLeave(a.date));
-
-    const dailyRate       = (Number(basic) || 0) / WORK_DAYS_PER_MONTH;
+    const countedAbsents  = countableAbsents(absents, { holidays, weekends, leaveRanges });
     const absentDays      = countedAbsents.length;
-    const absentDeduction = Math.round(dailyRate * absentDays);
+    const absentDeduction = deductionFor(basic, absentDays);
 
     return { unpaidLeaves, leaveDeduction, countedAbsents, absentDays, absentDeduction };
 };
