@@ -1,6 +1,8 @@
 import React from 'react'
 import Sidebar from '../components/EmployeeDashboard/Sidebar'
 import { Outlet } from 'react-router-dom'
+import { Suspense } from 'react'
+import PageLoader from '../components/PageLoader'
 import NavBar from '../components/dashboard/Navbar'
 
 const EmployeeDashboard = () => {
@@ -9,7 +11,7 @@ const EmployeeDashboard = () => {
     <Sidebar/>
     <div className='flex-1 ml-64 bg-gray-100 h-screen'>
 <NavBar/>
-<Outlet/>
+<Suspense fallback={<PageLoader />}><Outlet/></Suspense>
     </div>
    </div>
   )
