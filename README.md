@@ -58,7 +58,7 @@ Built as a team Final Year Project for BSc. CSIT at ASMT College, Kathmandu.
 - Departments: create, edit, delete (removes everything linked to its employees)
 - Leave: review requests with the ML score and breakdown, approve / reject, view all balances
 - Attendance: daily and monthly views, early-exit approvals, absent check that skips holidays, weekends and approved leave
-- Payroll: add salary, view history and salary breakdown
+- Payroll: add salary, view history and salary breakdown. Unpaid leave and **absent days** (from face attendance) are deducted automatically, and never twice
 - Holidays and email settings
 
 ### Employee
@@ -81,9 +81,13 @@ Built as a team Final Year Project for BSc. CSIT at ASMT College, Kathmandu.
 | Casual | 6 days | 3 days | 1 day | 7 days | 3 days |
 | Sick | 8 days | — | none | — | — (admin is alerted after 3 in 30 days) |
 
+Leave counts **working days only**: weekends (`WEEKEND_DAYS`) and declared holidays inside a leave are not taken from the balance.
+
 Days beyond the remaining balance become **unpaid** and are deducted from salary (monthly salary ÷ 26 per day). The balance is checked again at approval time, so it can never be overdrawn.
 
 **Attendance status:** check-in by 9:00 AM is Present, by 10:00 AM is Late, after that is Half Day. A full day is 8 hours.
+
+**Payroll:** Net = Basic + Allowances − Other deductions − Unpaid leave − Absent days. Absent days are deducted at basic ÷ 26 per day, skipping weekends, holidays and approved leave days, and the salary form previews exactly what will be deducted.
 
 ---
 
