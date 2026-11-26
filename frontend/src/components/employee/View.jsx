@@ -10,6 +10,7 @@ import {
     FaArrowLeft, FaIdBadge, FaCalendarCheck, FaFileAlt, FaUserTie
 } from 'react-icons/fa'
 import { showAlert } from '../AlertPopup'
+import { leaveDays } from '../../utils/leaveDays'
 
 const InfoRow = ({ icon, label, value, valueCls='' }) => (
     <div className="flex items-start gap-3 py-3 border-b border-stone-100 last:border-0">
@@ -301,7 +302,7 @@ const handleDelete = async () => {
                                 </thead>
                                 <tbody className="divide-y divide-stone-50">
                                     {leaves.map((l, i) => {
-                                        const days = Math.ceil((new Date(l.endDate) - new Date(l.startDate)) / 86400000) + 1
+                                        const days = leaveDays(l)
                                         const badge = { Approved: 'bg-emerald-100 text-emerald-700', Rejected: 'bg-red-100 text-red-700', Pending: 'bg-amber-100 text-amber-700' }
                                         return (
                                             <tr key={l._id} className="hover:bg-stone-50 transition">
