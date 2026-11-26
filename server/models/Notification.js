@@ -19,6 +19,8 @@ const notificationSchema = new Schema({
     // For broadcasts (forRole 'all', e.g. holidays): who has read it.
     // A single isRead flag was shared, so one employee reading it marked it read for everyone.
     readBy:     [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    // Broadcasts an employee deleted (hidden only for them)
+    dismissedBy: [{ type: Schema.Types.ObjectId, ref: 'User' }],
     // For early exit requests — stores attendance ID so admin can approve/reject
     attendanceId: { type: Schema.Types.ObjectId, ref: 'Attendance', default: null },
     actionable:   { type: Boolean, default: false },   // true = admin can act on this
