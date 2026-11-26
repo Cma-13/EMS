@@ -5,6 +5,8 @@ import axios from 'axios'
 import { FaPlus, FaSearch, FaEye, FaEdit, FaTrash, FaUsers, FaFilter } from 'react-icons/fa'
 import { API_BASE, apiUrl, fileUrl } from '../../utils/apiConfig'
 import { showAlert } from '../AlertPopup'
+import Pagination from '../Pagination'
+import { usePagination } from '../../utils/usePagination'
 
 const List = () => {
     const [employees, setEmployees] = useState([])
@@ -28,6 +30,9 @@ const navigate = useNavigate()
     }
 
     useEffect(() => { fetchEmployees() }, [])
+
+    // 10 per page; a new search goes back to page 1
+    const pg = usePagination(filtered, 10, searchQuery)
 
     const handleSearch = (e) => {
         const q = e.target.value.toLowerCase()
@@ -118,9 +123,9 @@ const handleDelete = async () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-stone-100">
-                                {filtered.map((emp, i) => (
+                                {pg.pageItems.map((emp, i) => (
                                     <tr key={emp._id} className="hover:bg-teal-50/30 transition group">
-                                        <td className="px-5 py-4 text-stone-400 font-medium text-xs">{i + 1}</td>
+                                        <td className="px-5 py-4 text-stone-400 font-medium text-xs">{pg.offset + i + 1}</td>
                                         <td className="px-5 py-4">
                                             <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-teal-50 text-teal-700 text-xs font-bold border border-teal-100">
                                                 {emp.employeeId}
@@ -178,12 +183,8 @@ onClick={() => setConfirmData({ id: emp._id, name: emp.userId?.name })}
                         </table>
 
                         {/* Footer */}
-                        <div className="px-5 py-3 bg-stone-50 border-t border-stone-100 flex items-center justify-between flex-wrap gap-2">
-                            <p className="text-xs text-stone-400">
-                                Showing <b>{filtered.length}</b> of <b>{employees.length}</b> employees
-                            </p>
-
-                        </div>
+                        <Pagination page={pg.page} pages={pg.pages} total={pg.total} pageSize={pg.pageSize}
+                            onChange={pg.setPage} label={searchQuery ? `matching employees (${employees.length} total)` : 'employees'} />
                     </div>
                 )}
             </div>
