@@ -7,6 +7,7 @@ import {
     FaCalendarAlt, FaCheckCircle, FaExclamationTriangle,
     FaInfoCircle, FaTimesCircle, FaMoneyBillWave
 } from 'react-icons/fa'
+import { leaveDays } from '../../utils/leaveDays'
 
 const POLICY_LABELS = {
     'Annual Leave':  { notice: '7 days advance', gap: '14 days between requests', max: '5 days per request', color: 'teal' },
@@ -213,7 +214,7 @@ const Add = () => {
                                     }`}>
                                         <p className="text-xs font-semibold text-stone-600 mb-2 flex items-center gap-1.5">
                                             <FaMoneyBillWave className={validation.paidInfo.unpaidDays > 0 ? 'text-amber-500' : 'text-emerald-500'} />
-                                            Leave Breakdown -{validation.paidInfo.duration} days total
+                                            Leave Breakdown - {validation.paidInfo.duration} working day{validation.paidInfo.duration === 1 ? '' : 's'}
                                         </p>
                                         <div className="grid grid-cols-2 gap-3 text-xs">
                                             <div className="bg-emerald-100 rounded-lg p-2.5 text-center">
